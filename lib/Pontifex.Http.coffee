@@ -5,23 +5,29 @@
 
 http = require 'http'
 
-PontifexHttp = (Bridge,Url) ->
+PontifexHttp = (Bridge,Url) =>
 	console.log("connecting to #{Url}")
+	self = this
 	[ proto, host, port ] = Url.match(///([^:]+)://([^:]+):(\d+)///)[1...]	# "http", "dloh.org", "80" 
-	self = () ->
-		self.server = http.createServer (req,res) ->
-			self[req.method.toLowerCase()]?.apply(self,req,res)
-		self.server.listen port, host
+	self.server = http.createServer (req,res) ->
+		console.log("Got a #{req.method.toLowerCase()} request")
+		self[req.method.toLowerCase()]?.apply(self,[ req,res ])
+	self.server.listen port
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.create exchange, key, queue
 		res.writeHead 201, { "Location": "#{req.url}" }
 		res.end()
 	self.get = (req,res) ->
+		console.log "Getting resource #{req.url}"
 		[ exchange, key, queue ] = req.url.match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.read queue, (data) ->
-			res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
-			res.end data
+			if data
+				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
+				res.end data
+			else
+				res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
+				res.end()
 	self.put = (req,res) ->
 		[ exchange, key ] = req.url.match(////([^\/]+)/([^\/]+)///)[1...]
 		Pons.update exchange, key, req.body
@@ -34,5 +40,6 @@ PontifexHttp = (Bridge,Url) ->
 		data = '[ "ok" ]'
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 		res.end data
+	self
 
 module.exports = PontifexHttp

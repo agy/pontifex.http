@@ -27,10 +27,12 @@ PontifexHttp = (Bridge,Url) =>
 				res.end()
 	self.put = (req,res) ->
 		[ exchange, key ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)///)[1...]
-		Bridge.update exchange, key, req.body
-		data = '[ "ok" ]'
-		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
-		res.end data
+		req.on 'data', (data) ->
+			console.log("updating #{exchange} / #{key} -> #{data.toString()}")
+			Bridge.update exchange, key, data.toString()
+			data = '[ "ok" ]'
+			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
+			res.end data
 	self.delete = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.delete queue

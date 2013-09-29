@@ -1,0 +1,22 @@
+{
+	"author": "David Goehrig",
+	"name": "pontifex.http",
+	"license" : "MIT",
+	"description": "Bridges HTTP to AMQP",
+	"version": "0.0.1",
+	"repository": {
+		"url": "http://github.com/cthulhuology/pontifex.http"
+	},
+	"main": "./lib/Pontifex.Http.coffee",
+	"bin": {},
+	"dependencies": {
+		"opifex" : "0.0.3",
+		"pontifex" : "0.0.1"
+	},
+	"devDependencies": {},
+	"optionalDependencies": {},
+	"engines": {
+		"node": "*",
+		"coffee": "*"
+	}
+}

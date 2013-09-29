@@ -8,7 +8,7 @@
 		"url": "http://github.com/cthulhuology/pontifex.http"
 	},
 	"main": "./lib/Pontifex.Http.coffee",
-	"bin": {},
+	"bin": { "pontif.http" : "./bin/daemon"},
 	"dependencies": {
 		"opifex" : "0.0.3",
 		"pontifex" : "0.0.1"

@@ -14,8 +14,9 @@ PontifexHttp = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.create exchange, key, queue
-		res.writeHead 201, { "Location": "/#{queue}" }
-		res.end()
+		data = JSON.stringify [ "ok", "/#{queue}" ]
+		res.writeHead 201, { "Location": "/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
+		res.end data
 	self.get = (req,res) ->
 		[ queue ] = req.url.match(////([^\/]+)///)[1...]
 		Bridge.read queue, (data) ->
@@ -26,16 +27,17 @@ PontifexHttp = (Bridge,Url) =>
 				res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
 				res.end()
 	self.put = (req,res) ->
-		[ exchange, key ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)///)[1...]
+		resource = req.url.replace("%23","#").replace("%2a","*")
+		[ exchange, key ] = resource.match(////([^\/]+)/([^\/]+)///)[1...]
 		req.on 'data', (data) ->
 			Bridge.update exchange, key, data.toString()
-			data = '[ "ok" ]'
+			data = JSON.stringify [ "ok", resource ]
 			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 			res.end data
 	self.delete = (req,res) ->
 		[ queue ] = req.url.match(////([^\/]+)///)[1...]
 		Bridge.delete queue
-		data = '[ "ok" ]'
+		data = JSON.stringify [ "ok", req.url ]
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 		res.end data
 	self

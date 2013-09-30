@@ -14,10 +14,10 @@ PontifexHttp = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.create exchange, key, queue
-		res.writeHead 201, { "Location": "#{req.url}" }
+		res.writeHead 201, { "Location": "/#{queue}" }
 		res.end()
 	self.get = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		[ queue ] = req.url.match(////([^\/]+)///)[1...]
 		Bridge.read queue, (data) ->
 			if data
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
@@ -34,7 +34,7 @@ PontifexHttp = (Bridge,Url) =>
 			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 			res.end data
 	self.delete = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		[ queue ] = req.url.match(////([^\/]+)///)[1...]
 		Bridge.delete queue
 		data = '[ "ok" ]'
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }

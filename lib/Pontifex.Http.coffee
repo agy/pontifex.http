@@ -28,7 +28,6 @@ PontifexHttp = (Bridge,Url) =>
 	self.put = (req,res) ->
 		[ exchange, key ] = req.url.replace("%23","#").match(////([^\/]+)/([^\/]+)///)[1...]
 		req.on 'data', (data) ->
-			console.log("updating #{exchange} / #{key} -> #{data.toString()}")
 			Bridge.update exchange, key, data.toString()
 			data = '[ "ok" ]'
 			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }

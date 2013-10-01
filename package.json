@@ -3,14 +3,14 @@
 	"name": "pontifex.http",
 	"license" : "MIT",
 	"description": "Bridges HTTP to AMQP",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"repository": {
 		"url": "http://github.com/cthulhuology/pontifex.http"
 	},
 	"main": "./lib/Http.coffee",
 	"bin": {},
 	"dependencies": {
-		"pontifex" : ">=0.0.3"
+		"pontifex" : ">=0.0.4"
 	},
 	"devDependencies": {},
 	"optionalDependencies": {},

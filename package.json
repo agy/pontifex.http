@@ -3,7 +3,7 @@
 	"name": "pontifex.http",
 	"license" : "MIT",
 	"description": "Bridges HTTP to AMQP",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"repository": {
 		"url": "http://github.com/cthulhuology/pontifex.http"
 	},

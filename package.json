@@ -7,15 +7,14 @@
 	"repository": {
 		"url": "http://github.com/cthulhuology/pontifex.http"
 	},
-	"main": "./lib/Pontifex.Http.coffee",
+	"main": "./lib/Http.coffee",
 	"bin": {},
 	"dependencies": {
-		"pontifex" : "0.0.3"
+		"pontifex" : ">=0.0.3"
 	},
 	"devDependencies": {},
 	"optionalDependencies": {},
 	"engines": {
-		"node": "*",
-		"coffee": "*"
+		"node": "*"
 	}
 }

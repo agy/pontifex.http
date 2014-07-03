@@ -19,7 +19,7 @@ Http = (Bridge,Url) =>
 			catch error
 				console.log "Error #{error}"
 				
-	self.server.listen port,() -> console.log "we are here" 
+	self.server.listen port
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.route exchange, key, queue

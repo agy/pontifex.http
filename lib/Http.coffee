@@ -19,12 +19,11 @@ Http = (Bridge,Url) =>
 			catch error
 				console.log "Error #{error}"
 				
-	self.server.listen port
+	self.server.listen port,() -> console.log "we are here" 
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.route exchange, key, queue
 		data = JSON.stringify [ "ok", "/#{queue}" ]
-		
 		self.createConnection(exchange, req.url , key)
 		self.readConnection(exchange,req.url , key , data.length)
 		self.wroteConnection(exchange,req.url , key , data.length)
@@ -68,18 +67,18 @@ Http = (Bridge,Url) =>
 		self.closeConnection(exchange, req.url, key)
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 		res.end data
-	self.createConnection = (exchange ,  _url , _key) ->
+	self.createConnection = (_exchange , _url , _key) ->
 	    data = '["created_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+peer+'" ,"'+new Date().getTime()+'"]'
-	    Bridge.send exchange, _key, data
-	self.readConnection = (exchange, _url , _key , messageLength)->
-	   data = '["read_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+messageLength+'" ,"'+new Date().getTime()+'"]'
-	   Bridge.send exchange, _key, data
-	self.wroteConnection = (exchange, _url , _key , messageLength)->
-	   data = '["wrote_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+messageLength+'" ,"'+new Date().getTime()+'"]'
-	   Bridge.send exchange, _key, data
-	self.closeConnection = (exchange , _url , _key )->
+	    Bridge.send _exchange, _key, data
+	self.readConnection = (_exchange, _url , _key , _messageLength)->
+	   data = '["read_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+_messageLength+'" ,"'+new Date().getTime()+'"]'
+	   Bridge.send _exchange, _key, data
+	self.wroteConnection = (_exchange, _url , _key , _messageLength)->
+	   data = '["wrote_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+_messageLength+'" ,"'+new Date().getTime()+'"]'
+	   Bridge.send _exchange, _key, data
+	self.closeConnection = (_exchange , _url , _key )->
 	    data = '["closed_connection" , "'+_url+'" , "'+sessionUUID+'" , "' + accountName + '", "'+new Date().getTime()+'" ,"'+false+'"]'
-	    Bridge.send exchange, _key, data
+	    Bridge.send _exchange, _key, data
 	self
 
 module.exports = Http

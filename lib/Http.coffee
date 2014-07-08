@@ -13,6 +13,8 @@ Http = (Bridge,Url) =>
 	monitoringExchange='monitoring-in'
 	monitoringHashKey='#'
 	peer=host
+	oldRead = 0 
+	oldWritten = 0 
 	self.server = http.createServer (req,res) ->
 		Bridge.connect domain, () ->
 			try
@@ -25,25 +27,25 @@ Http = (Bridge,Url) =>
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.route exchange, key, queue
 		connection = req.connection
-		readSize = req.socket.bytesRead
-		writtenSize = req.socket.bytesWritten
 		data = JSON.stringify [ "ok", "/#{queue}" ]
-		self.createConnection(exchange, req.url , key)
-		self.readConnection(exchange,req.url , key , readSize + data.length)
-		self.wroteConnection(exchange,req.url , key , writtenSize + data.length)
-		self.closeConnection(exchange, req.url, key)
-		
+		self.createConnection(monitoringExchange, req.url , key)
+	
+		self.readConnection(monitoringExchange,req.url , key , req.socket.bytesRead - oldRead)
+		self.wroteConnection(monitoringExchange,req.url , key , req.socket.bytesWritten - oldWritten)
+		self.closeConnection(monitoringExchange, req.url, key)
+		oldRead = req.socket.bytesRead
+		oldWritten = req.socket.bytesWritten
 		res.writeHead 201, { "Location": "/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
 		res.end data
 	self.get = (req,res) ->
 		[ queue ] = req.url.match(///[^\/]*/([^\/]+)///)[1...]
 		Bridge.read queue, (data) ->
-			readSize = req.socket.bytesRead
-			writtenSize = req.socket.bytesWritten
-			self.createConnection(exchange, req.url , key)
-			self.readConnection(exchange,req.url , key , readSize + data.length)
-			self.wroteConnection(exchange,req.url , key , writtenSize + data.length)
-			self.closeConnection(exchange, req.url, key)
+			self.createConnection(monitoringExchange, req.url , key)
+			self.readConnection(monitoringExchange,req.url , key , req.socket.bytesRead - oldRead)
+			self.wroteConnection(monitoringExchange,req.url , key , req.socket.bytesWritten - oldWritten)
+			self.closeConnection(monitoringExchange, req.url, key)
+			oldRead = req.socket.bytesRead
+			oldWritten = req.socket.bytesWritten
 			if data
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
@@ -54,30 +56,36 @@ Http = (Bridge,Url) =>
 		resource = req.url.replace("%23","#").replace("%2a","*")
 		[ exchange, key ] = resource.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
 		req.on 'data', (data) ->
-			Bridge.send exchange, key, data.toString()
 			if data.toString().replace(/\s/g, '') == '[ping]'
 				data = '["pong"]' 
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
-			readSize = req.socket.bytesRead
-			writtenSize = req.socket.bytesWritten
-			self.createConnection(exchange, req.url , key)
-			self.readConnection(exchange,req.url , key ,readSize + data.length)
-			self.wroteConnection(exchange,req.url , key ,writtenSize + data.length)
-			self.closeConnection(exchange, req.url, key)
-			data = JSON.stringify [ "ok", resource ]
-			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
-			res.end data
+			else
+				console.log(req.socket.bytesRead)
+				Bridge.send exchange, key, data.toString()
+				readSize = req.socket.bytesRead
+				writtenSize = req.socket.bytesWritten
+				self.createConnection(monitoringExchange, req.url , key)
+				self.readConnection(monitoringExchange,req.url , key ,req.socket.bytesRead - oldRead)
+				self.wroteConnection(monitoringExchange,req.url , key , req.socket.bytesWritten - oldWritten)
+				self.closeConnection(monitoringExchange, req.url, key)
+				oldRead = req.socket.bytesRead
+				oldWritten = req.socket.bytesWritten
+				data = JSON.stringify [ "ok", resource ]
+				res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
+				res.end data
 	self.delete = (req,res) ->
 		[ queue ] = req.url.match(////[^\/]*/([^\/]+)///)[1...]
 		Bridge.delete queue
 		data = JSON.stringify [ "ok", req.url ]
 		readSize = req.socket.bytesRead
 		writtenSize = req.socket.bytesWritten
-		self.createConnection(exchange, req.url , key)
-		self.readConnection(exchange,req.url , key , readSize + data.length)
-		self.wroteConnection(exchange,req.url , key , writtenSize + data.length)
-		self.closeConnection(exchange, req.url, key)
+		self.createConnection(monitoringExchange, req.url , key)
+		self.readConnection(monitoringExchange,req.url , key , req.socket.bytesRead - oldRead)
+		self.wroteConnection(monitoringExchange,req.url , key , req.socket.bytesWritten - oldWritten)
+		self.closeConnection(monitoringExchange, req.url, key)
+		oldRead = req.socket.bytesRead
+		oldWritten = req.socket.bytesWritten
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 		res.end data
 	self.createConnection = (_exchange , _url , _key) ->

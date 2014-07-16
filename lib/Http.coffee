@@ -71,7 +71,7 @@ Http = (Bridge,Url) =>
 				if message[0] == 'ping'
 					data = JSON.stringify ['pong']
 				else
-					Bridge.send exchange, key, JSON.stringify(data)
+					Bridge.send exchange, key, JSON.stringify(message)
 					data = JSON.stringify [ "ok", sink ]
 	
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }

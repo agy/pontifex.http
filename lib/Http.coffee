@@ -18,9 +18,9 @@ Http = (Bridge,Url) =>
 	self.server = http.createServer (req,res) ->
 		try
 			# dynamically dispatch to the correct REST handler
-			session = uuid.v4()
-			self.server.stats.push [ 'created_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-			self.server.stats.push [ 'read_connection', req.url, session, domain, req.socket.bytesRead, new Date().getTime()]
+			req.session = uuid.v4()
+			self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+			self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
 			self[req.method.toLowerCase()]?.apply(self,[ req,res ])
 		catch error
 			console.log "[pontifex.http] Error #{error}"
@@ -39,11 +39,11 @@ Http = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.route exchange, key, queue, () ->
-			data = JSON.stringify [ "ok", "/#{queue}" ]
-			res.writeHead 201, { "Location": "/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
+			data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
+			res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
 			res.end data
-			self.server.stats.push [ 'wrote_connection', req.url, session, domain, req.socket.bytesWritten, new Date().getTime()]
-			self.server.stats.push [ 'closed_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 
 	# GET /exchange/key/queue	 - reads a message off of the queue
 	self.get = (req,res) ->
@@ -52,13 +52,13 @@ Http = (Bridge,Url) =>
 			if data
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
-				self.server.stats.push [ 'wrote_connection', req.url, session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 			else
 				res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
 				res.end()
-				self.server.stats.push [ 'wrote_connection', req.url, session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 
 	# PUT exchange/key		- write a message to a sink
 	self.put = (req,res) ->
@@ -75,8 +75,8 @@ Http = (Bridge,Url) =>
 	
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
-				self.server.stats.push [ 'wrote_connection', req.url, session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 			catch error
 				console.log "[pontifex.http] #{error}"
 
@@ -87,7 +87,7 @@ Http = (Bridge,Url) =>
 		data = JSON.stringify [ "ok", req.url ]
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
 		res.end data
-		self.server.stats.push [ 'wrote_connection', req.url, session, domain, req.socket.bytesWritten, new Date().getTime()]
-		self.server.stats.push [ 'closed_connection', req.url, session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+		self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+		self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 
 module.exports = Http

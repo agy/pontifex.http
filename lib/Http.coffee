@@ -20,13 +20,14 @@ Http = (Bridge,Url) =>
 				# dynamically dispatch to the correct REST handler
 				self[req.method.toLowerCase()]?.apply(self,[ req,res ])
 			catch error
-				console.log "[pontifex.http] Error #{error}"
+				console.log "[pontifex.http] #{error}"
 				
 	self.server.listen port
 
 	# POST /exchange/key/queue	- creates a bus address for a source
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		console.log [ exchange, key, queue ]
 		Bridge.route exchange, key, queue, () ->
 			data = JSON.stringify [ "ok", "/#{queue}" ]
 			res.writeHead 201, { "Location": "/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }

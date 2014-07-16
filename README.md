@@ -32,12 +32,12 @@ The same, but for the 'wot' vhost shown above:
 
 Send a JSON message to the test-exchange exchange with a routing key of foobar:
 
-	curl -X PUT 'http://localhost:8088//test-exchange/foobar' -d '[ "run", "ls", "-al" ]'
+	curl -X PUT 'http://localhost:8088/wot/test-exchange/foobar' -d '[ "run", "ls", "-al" ]'
 
 Access the queue to read a message off of the test-queue:
 
-	curl 'http://localhost:8088//test-queue'
+	curl 'http://localhost:8088/wot/test-exchange/%23/test-queue'
 
 And finally, delete the test-queue:
 
-	curl -X DELETE 'http://localhost:8088//test-queue'
+	curl -X DELETE 'http://localhost:8088/wot/test-exchange/%23/test-queue'

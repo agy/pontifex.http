@@ -38,6 +38,7 @@ Http = (Bridge,Url) =>
 	# POST /exchange/key/queue	- creates a bus address for a source
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		console.log [ exchange, key, queue ]
 		Bridge.route exchange, key, queue, () ->
 			data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
 			res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }

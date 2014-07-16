@@ -81,9 +81,9 @@ Http = (Bridge,Url) =>
 			catch error
 				console.log "[pontifex.http] #{error}"
 
-	# DELETE /queue		- removes a queue & binding
+	# DELETE /exchange/key/queue		- removes a queue & binding
 	self.delete = (req,res) ->
-		[ queue ] = req.url.match(////[^\/]*/([^\/]+)///)[1...]
+		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		Bridge.delete queue
 		data = JSON.stringify [ "ok", req.url ]
 		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }

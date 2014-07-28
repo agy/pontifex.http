@@ -37,9 +37,8 @@ Http = (Bridge,Url) =>
 
 	# POST /exchange/key/queue	- creates a bus address for a source
 	self.post = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		console.log [ exchange, key, queue ]
-		token = '01F3BSmjY-sNCF67'
+		[ token, exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		console.log [ token, exchange, key, queue ]
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/create/#{exchange}%2F#{key}%2F#{queue}"
 			json: true

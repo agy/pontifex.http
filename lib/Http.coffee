@@ -6,31 +6,31 @@
 
 http = require 'http'
 uuid = require 'uuid'
+request = require 'request'
 
 Http = (Bridge,Url) =>
 	self = this
 
 	# http :// wot.io : 80 / wot
-	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]	
-
+	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
 		try
-			# dynamically dispatch to the correct REST handler
+		# dynamically dispatch to the correct REST handler
 			req.session = uuid.v4()
 			self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 			self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
 			self[req.method.toLowerCase()]?.apply(self,[ req,res ])
 		catch error
 			console.log "[pontifex.http] Error #{error}"
-				
+
 	self.server.listen port
 	self.server.stats = []
 
 	self.server.flush_stats = () ->
 		self.server.stats.map (x) ->
-			Bridge.log x[1], x	
+			Bridge.log x[1], x
 		self.server.stats = []
 
 	setInterval self.server.flush_stats, 60000	# flush stats once a minute
@@ -39,12 +39,21 @@ Http = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
-		Bridge.route exchange, key, queue, () ->
-			data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
-			res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
-			res.end data
-			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+		token = '01F3BSmjY-sNCF67'
+		auth_req =
+			url: "http://auth.wot.io/authenticate_token/#{token}/create/#{exchange}%2F#{key}%2F#{queue}"
+			json: true
+		request auth_req, (error, response, body) ->
+			if !error and response.statusCode == 200
+				if body.authenticate_token
+					Bridge.route exchange, key, queue, () ->
+						data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
+						res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
+						res.end data
+						self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+						self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				else
+					console.log 'Failed authentication'
 
 	# GET /exchange/key/queue	 - reads a message off of the queue
 	self.get = (req,res) ->
@@ -73,7 +82,7 @@ Http = (Bridge,Url) =>
 				else
 					Bridge.send exchange, key, JSON.stringify(message)
 					data = JSON.stringify [ "ok", sink ]
-	
+
 				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
 				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]

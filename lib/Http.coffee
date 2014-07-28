@@ -79,7 +79,7 @@ Http = (Bridge,Url) =>
 					res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
 					res.end()
 					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 
 	# PUT exchange/key		- write a message to a sink
 	self.put = (req,res) ->
@@ -111,4 +111,4 @@ Http = (Bridge,Url) =>
 		self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 		self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 
-	module.exports = Http
+module.exports = Http

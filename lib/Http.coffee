@@ -14,9 +14,10 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
-	token = '01F3BSmjY-sNCF67'
 	wot_authenticate = (headers, command, path, callback) ->
-		# TODO: get token out of header
+		token = headers.authorization.match(/[bB]earer (.*)/)[1]
+		# TODO: check for match robustness and error handling
+		console.log token;
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
 			json: true
@@ -29,7 +30,7 @@ Http = (Bridge,Url) =>
 						callback()
 					else
 						console.log 'Failed authentication'
-		# TODO: Return HTTP response so client doesn't wait
+						# TODO: Return HTTP response so client doesn't wait
 		catch error
 			console.log "[pontifex.http] #{error}"
 
@@ -58,7 +59,6 @@ Http = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
-		console.log req.headers
 		wot_authenticate(req.headers, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.route exchange, key, queue, () ->
 				data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]

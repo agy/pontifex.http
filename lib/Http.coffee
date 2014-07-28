@@ -14,6 +14,7 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
+	tmptoken = '01F3BSmjY-sNCF67'
 	wot_authenticate = (token, command, path, callback) ->
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
@@ -53,9 +54,9 @@ Http = (Bridge,Url) =>
 
 	# POST /exchange/key/queue	- creates a bus address for a source
 	self.post = (req,res) ->
-		[ token, exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		console.log [ token, exchange, key, queue ]
-		wot_authenticate(token, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
+		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		console.log [ exchange, key, queue ]
+		wot_authenticate(tmptoken, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.route exchange, key, queue, () ->
 				data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
 				res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
@@ -66,9 +67,9 @@ Http = (Bridge,Url) =>
 
 	# GET /exchange/key/queue	 - reads a message off of the queue
 	self.get = (req,res) ->
-		[ token, exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		console.log [ token, exchange, key, queue ]
-		wot_authenticate(token, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
+		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		console.log [ exchange, key, queue ]
+		wot_authenticate(tmptoken, 'read', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.read queue, (data) ->
 				if data
 					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
@@ -87,28 +88,30 @@ Http = (Bridge,Url) =>
 		[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
 		req.on 'data', (data) ->
 			try
-				message = JSON.parse(data)
-				if message[0] == 'ping'
-					data = JSON.stringify ['pong']
-				else
-					Bridge.send exchange, key, JSON.stringify(message)
-					data = JSON.stringify [ "ok", sink ]
+				wot_authenticate(tmptoken, 'write', "#{exchange}%2F#{key}", () ->
+					message = JSON.parse(data)
+					if message[0] == 'ping'
+						data = JSON.stringify ['pong']
+					else
+						Bridge.send exchange, key, JSON.stringify(message)
+						data = JSON.stringify [ "ok", sink ]
 
-				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
-				res.end data
-				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
+					res.end data
+					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 			catch error
 				console.log "[pontifex.http] #{error}"
 
 	# DELETE /exchange/key/queue		- removes a queue & binding
 	self.delete = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		Bridge.delete queue
-		data = JSON.stringify [ "ok", req.url ]
-		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
-		res.end data
-		self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-		self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+		wot_authenticate(tmptoken, 'delete', "#{exchange}%2F#{key}", () ->
+			Bridge.delete queue
+			data = JSON.stringify [ "ok", req.url ]
+			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
+			res.end data
+			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 
 module.exports = Http

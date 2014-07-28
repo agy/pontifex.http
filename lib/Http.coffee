@@ -14,6 +14,19 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
+	wot_authenticate = (token, command, path, callback) ->
+		auth_req =
+			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
+			json: true
+		console.log auth_req.url
+		request auth_req, (error, response, body) ->
+			if !error and response.statusCode == 200
+				console.log body
+				if body.authenticate_token
+					callback()
+				else
+					console.log 'Failed authentication'
+
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
 		try
@@ -39,20 +52,14 @@ Http = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ token, exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ token, exchange, key, queue ]
-		auth_req =
-			url: "http://auth.wot.io/authenticate_token/#{token}/create/#{exchange}%2F#{key}%2F#{queue}"
-			json: true
-		request auth_req, (error, response, body) ->
-			if !error and response.statusCode == 200
-				if body.authenticate_token
-					Bridge.route exchange, key, queue, () ->
-						data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
-						res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
-						res.end data
-						self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-						self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-				else
-					console.log 'Failed authentication'
+		wot_authenticate(token, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
+			Bridge.route exchange, key, queue, () ->
+				data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
+				res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
+				res.end data
+				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
+
 
 	# GET /exchange/key/queue	 - reads a message off of the queue
 	self.get = (req,res) ->

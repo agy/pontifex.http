@@ -19,13 +19,16 @@ Http = (Bridge,Url) =>
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
 			json: true
 		console.log auth_req.url
-		request auth_req, (error, response, body) ->
-			if !error and response.statusCode == 200
-				console.log body
-				if body.authenticate_token
-					callback()
-				else
-					console.log 'Failed authentication'
+		try
+			request auth_req, (error, response, body) ->
+				if !error and response.statusCode == 200
+					console.log body
+					if body.authenticate_token
+						callback()
+					else
+						console.log 'Failed authentication'
+		catch error
+			console.log "[pontifex.http] #{error}"
 
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
@@ -78,34 +81,34 @@ Http = (Bridge,Url) =>
 					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 
-			# PUT exchange/key		- write a message to a sink
-			self.put = (req,res) ->
-				sink = req.url.replace("%23","#").replace("%2a","*")
-				[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
-				req.on 'data', (data) ->
-					try
-						message = JSON.parse(data)
-						if message[0] == 'ping'
-							data = JSON.stringify ['pong']
-						else
-							Bridge.send exchange, key, JSON.stringify(message)
-							data = JSON.stringify [ "ok", sink ]
+	# PUT exchange/key		- write a message to a sink
+	self.put = (req,res) ->
+		sink = req.url.replace("%23","#").replace("%2a","*")
+		[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
+		req.on 'data', (data) ->
+			try
+				message = JSON.parse(data)
+				if message[0] == 'ping'
+					data = JSON.stringify ['pong']
+				else
+					Bridge.send exchange, key, JSON.stringify(message)
+					data = JSON.stringify [ "ok", sink ]
 
-						res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
-						res.end data
-						self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-						self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-					catch error
-						console.log "[pontifex.http] #{error}"
-
-			# DELETE /exchange/key/queue		- removes a queue & binding
-			self.delete = (req,res) ->
-				[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-				Bridge.delete queue
-				data = JSON.stringify [ "ok", req.url ]
-				res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
+				res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 				res.end data
 				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+			catch error
+				console.log "[pontifex.http] #{error}"
 
-			module.exports = Http
+	# DELETE /exchange/key/queue		- removes a queue & binding
+	self.delete = (req,res) ->
+		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		Bridge.delete queue
+		data = JSON.stringify [ "ok", req.url ]
+		res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
+		res.end data
+		self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+		self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+
+	module.exports = Http

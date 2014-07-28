@@ -28,6 +28,7 @@ Http = (Bridge,Url) =>
 						callback()
 					else
 						console.log 'Failed authentication'
+						# TODO: Return HTTP response so client doesn't wait
 		catch error
 			console.log "[pontifex.http] #{error}"
 
@@ -106,7 +107,7 @@ Http = (Bridge,Url) =>
 	# DELETE /exchange/key/queue		- removes a queue & binding
 	self.delete = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		wot_authenticate(tmptoken, 'delete', "#{exchange}%2F#{key}", () ->
+		wot_authenticate(tmptoken, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.delete queue
 			data = JSON.stringify [ "ok", req.url ]
 			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }

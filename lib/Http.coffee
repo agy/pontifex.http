@@ -15,7 +15,7 @@ Http = (Bridge,Url) =>
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
 	wot_authenticate = (headers, command, path, callback) ->
-		token = headers.authorization.match(/[bB]earer (.*)/)[1]
+		token = headers.authorization.match(/bearer (.*)/i)[1]
 		# TODO: check for match robustness and error handling
 		console.log token;
 		auth_req =
@@ -30,7 +30,10 @@ Http = (Bridge,Url) =>
 						callback()
 					else
 						console.log 'Failed authentication'
-						# TODO: Return HTTP response so client doesn't wait
+						res.writeHead 401, { "Content-Type": "application/json", "Content-Length": 0 }
+						res.end()
+						self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+						self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 		catch error
 			console.log "[pontifex.http] #{error}"
 
@@ -97,7 +100,6 @@ Http = (Bridge,Url) =>
 					else
 						Bridge.send exchange, key, JSON.stringify(message)
 						data = JSON.stringify [ "ok", sink ]
-
 					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
 					res.end data
 					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]

@@ -14,6 +14,9 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
+	# OAuth2 Authentication
+	# As specified in: http://tools.ietf.org/html/rfc6749
+	#                  http://tools.ietf.org/html/rfc6750
 	wot_authenticate = (headers, command, path, callback) ->
 		token = headers.authorization.match(/bearer (.*)/i)[1]
 		# TODO: check for match robustness and error handling
@@ -50,7 +53,6 @@ Http = (Bridge,Url) =>
 
 	self.server.listen port
 	self.server.stats = []
-
 	self.server.flush_stats = () ->
 		self.server.stats.map (x) ->
 			Bridge.log x[1], x
@@ -58,7 +60,7 @@ Http = (Bridge,Url) =>
 
 	setInterval self.server.flush_stats, 60000	# flush stats once a minute
 
-	# POST /exchange/key/queue	- creates a bus address for a source
+	# POST /exchange/key/queue   - creates a bus address for a source
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
@@ -70,7 +72,7 @@ Http = (Bridge,Url) =>
 				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 
-	# GET /exchange/key/queue	 - reads a message off of the queue
+	# GET /exchange/key/queue   - reads a message off of the queue
 	self.get = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
@@ -87,7 +89,7 @@ Http = (Bridge,Url) =>
 					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 
-	# PUT exchange/key		- write a message to a sink
+	# PUT exchange/key   - write a message to a sink
 	self.put = (req,res) ->
 		sink = req.url.replace("%23","#").replace("%2a","*")
 		[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
@@ -107,7 +109,7 @@ Http = (Bridge,Url) =>
 			catch error
 				console.log "[pontifex.http] #{error}"
 
-	# DELETE /exchange/key/queue		- removes a queue & binding
+	# DELETE /exchange/key/queue   - removes a queue & binding
 	self.delete = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		wot_authenticate(req.headers, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->

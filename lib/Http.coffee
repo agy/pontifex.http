@@ -19,12 +19,9 @@ Http = (Bridge,Url) =>
 	#                  http://tools.ietf.org/html/rfc6750
 	wot_authenticate = (headers, command, path, callback) ->
 		token = headers.authorization.match(/bearer (.*)/i)[1]
-		# TODO: check for match robustness and error handling
-		console.log token;
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
 			json: true
-		console.log auth_req.url
 		try
 			request auth_req, (error, response, body) ->
 				if !error and response.statusCode == 200

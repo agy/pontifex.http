@@ -14,11 +14,17 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
-	# OAuth2 Authentication
+	# OAuth2-like Authentication *Temporary, until full OAuth2 support is added*
 	# As specified in: http://tools.ietf.org/html/rfc6749
 	#                  http://tools.ietf.org/html/rfc6750
-	wot_authenticate = (headers, command, path, callback) ->
-		token = headers.authorization.match(/bearer (.*)/i)[1]
+	wot_authenticate = (res, req, command, path, callback) ->
+		if typeof req.headers.authorization == 'undefined'
+			res.writeHead 401, { "Content-Type": "application/json", "Content-Length": 0 }
+			res.end()
+			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+			return
+		token = req.headers.authorization.match(/bearer (.*)/i)[1]
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
 			json: true
@@ -61,7 +67,7 @@ Http = (Bridge,Url) =>
 	self.post = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
-		wot_authenticate(req.headers, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
+		wot_authenticate(res, req, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.route exchange, key, queue, () ->
 				data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
 				res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
@@ -73,7 +79,7 @@ Http = (Bridge,Url) =>
 	self.get = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
 		console.log [ exchange, key, queue ]
-		wot_authenticate(req.headers, 'read', "#{exchange}%2F#{key}%2F#{queue}", () ->
+		wot_authenticate(res, req, 'read', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.read queue, (data) ->
 				if data
 					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
@@ -92,7 +98,7 @@ Http = (Bridge,Url) =>
 		[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
 		req.on 'data', (data) ->
 			try
-				wot_authenticate(req.headers, 'write', "#{exchange}%2F#{key}", () ->
+				wot_authenticate(res, req, 'write', "#{exchange}%2F#{key}", () ->
 					message = JSON.parse(data)
 					if message[0] == 'ping'
 						data = JSON.stringify ['pong']
@@ -109,7 +115,7 @@ Http = (Bridge,Url) =>
 	# DELETE /exchange/key/queue   - removes a queue & binding
 	self.delete = (req,res) ->
 		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		wot_authenticate(req.headers, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->
+		wot_authenticate(res, req, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.delete queue
 			data = JSON.stringify [ "ok", req.url ]
 			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }

@@ -43,6 +43,17 @@ Http = (Bridge,Url) =>
 		catch error
 			console.log "[pontifex.http] #{error}"
 
+	# Extract the path for matching, and prevent crash in case of invalid path
+	extract_path = (url, numOfMatches) ->
+		try
+			if numOfMatches == 2
+				return url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
+			if numOfMatches == 3
+				return url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		catch error
+			console.log "[pontifex.http] #{error}"
+			return false
+
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
 		try
@@ -65,7 +76,8 @@ Http = (Bridge,Url) =>
 
 	# POST /exchange/key/queue   - creates a bus address for a source
 	self.post = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
+			return
 		console.log [ exchange, key, queue ]
 		wot_authenticate(res, req, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.route exchange, key, queue, () ->
@@ -77,7 +89,8 @@ Http = (Bridge,Url) =>
 
 	# GET /exchange/key/queue   - reads a message off of the queue
 	self.get = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
+			return
 		console.log [ exchange, key, queue ]
 		wot_authenticate(res, req, 'read', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.read queue, (data) ->
@@ -95,7 +108,8 @@ Http = (Bridge,Url) =>
 	# PUT exchange/key   - write a message to a sink
 	self.put = (req,res) ->
 		sink = req.url.replace("%23","#").replace("%2a","*")
-		[ exchange, key ] = sink.match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
+		if !( [ exchange, key ] = extract_path(req.url, 2) )
+			return
 		req.on 'data', (data) ->
 			try
 				wot_authenticate(res, req, 'write', "#{exchange}%2F#{key}", () ->
@@ -114,7 +128,8 @@ Http = (Bridge,Url) =>
 
 	# DELETE /exchange/key/queue   - removes a queue & binding
 	self.delete = (req,res) ->
-		[ exchange, key, queue ] = req.url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
+		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
+			return
 		wot_authenticate(res, req, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->
 			Bridge.delete queue
 			data = JSON.stringify [ "ok", req.url ]

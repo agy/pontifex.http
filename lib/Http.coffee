@@ -26,7 +26,7 @@ Http = (Bridge,Url) =>
 			return
 		token = req.headers.authorization.match(/bearer (.*)/i)[1]
 		auth_req =
-			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}"
+			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}".replace("'", "''")
 			json: true
 		try
 			request auth_req, (error, response, body) ->

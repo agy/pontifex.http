@@ -9,6 +9,8 @@ request = require 'request'
 chai = require '/usr/local/lib/node_modules/chai'
 chai.should()
 
+# TODO: Fix asynchronous testing
+
 reqparms =
 	uri: "http://www.google.com",
 	method: "GET",
@@ -30,7 +32,7 @@ describe 'Pontifex HTTP', () ->
 			uri: "http://localhost:8081/wot/test-exchange/%23/test-queue",
 			method: "POST",
 			timeout: 10000,
-			headers: { "authorization: bearer 01F3BSmjY-sNCF67" }
+			headers: { "authorization: bearer 01Qk925hduUux13Z" }
 
 		request reqparms, (error, response, body) ->
 			console.log error

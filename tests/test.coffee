@@ -11,7 +11,6 @@ chai.expect()
 
 describe 'Pontifex HTTP', () ->
 	# Override console.log for cleaner output
-	logit = console.log
 	console.log = () ->
 		return
 
@@ -20,10 +19,10 @@ describe 'Pontifex HTTP', () ->
 	putURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
 	getURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-
 	valid_token = 'bearer 01DuT0mz_pQAnf_T'
 	invalid_token = 'bearer x'
 	call_count = 4
+
 	do_tests = () ->
 		call_count++
 		if call_count != 5 then return
@@ -66,7 +65,7 @@ describe 'Pontifex HTTP', () ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail auth on PUT", (done) ->
-			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: invalid_token }, data: '[ "run", "ls", "-al" ]'}
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: invalid_token }, form: '["foo"]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
@@ -88,7 +87,7 @@ describe 'Pontifex HTTP', () ->
 				chai.expect(response.statusCode).to.equal(201);
 				done()
 		it "should accept PUT", (done) ->
-			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, data: '[ "run", "ls", "-al" ]'}
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				done()

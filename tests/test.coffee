@@ -21,11 +21,8 @@ describe 'Pontifex HTTP', () ->
 	delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	valid_token = ''
 	invalid_token = 'bearer x'
-	call_count = 4
 
 	do_tests = () ->
-		call_count++
-		if call_count != 5 then return
 		# We build the components of a fake pontifex module which store data
 		# locally instead of sending it on the bus
 		self = this
@@ -137,3 +134,22 @@ describe 'Pontifex HTTP', () ->
 	## Revoke ACLs and tokens when done.
 	##
 	after () ->
+		auth_requests =
+			revoke_create:
+				url: 'http://auth.wot.io/revoke_acl/wottest/wottest/create/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+			revoke_read:
+				url: 'http://auth.wot.io/revoke_acl/wottest/wottest/read/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+			revoke_write:
+				url: 'http://auth.wot.io/revoke_acl/wottest/wottest/write/test-exchange%2Ftest-key'
+				json: true
+			revoke_delete:
+				url: 'http://auth.wot.io/revoke_acl/wottest/wottest/delete/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+			revoke_token:
+				url: "http://auth.wot.io/deactivate_token/#{valid_token}"
+				json: true
+		for req of auth_requests
+			request auth_requests[req], (error, response, body) ->
+				return

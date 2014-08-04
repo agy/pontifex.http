@@ -10,6 +10,11 @@ chai = require '/usr/local/lib/node_modules/chai'
 chai.expect()
 
 describe 'Pontifex HTTP', () ->
+	# Override console.log for cleaner output
+	logit = console.log
+	console.log = () ->
+		return
+
 	authtoken = 'bearer 01DuT0mz_pQAnf_T'
 	call_count = 4
 	do_tests = () ->
@@ -36,12 +41,13 @@ describe 'Pontifex HTTP', () ->
 		self.log = (key,msg) ->
 			[ key, msg ]
 		self.route = (exchange,key,queue,cont) ->
-			[ exchange, key, queue, cont ]
+			cont()
+			return
 		self.read = (queue,fun) ->
 			fun ('[ "test", "array" ]')
 			return
 		self.send = (exchange, key, msg) ->
-			[ exchange, key, msg ]
+			return
 		self.delete = (queue) ->
 
 
@@ -94,6 +100,7 @@ describe 'Pontifex HTTP', () ->
 			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: authtoken }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
+				chai.expect(body).to.equal('[ "test", "array" ]')
 				done()
 		it "should accept DELETE", (done) ->
 			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: authtoken }}

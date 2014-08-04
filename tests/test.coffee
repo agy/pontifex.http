@@ -38,6 +38,7 @@ describe 'Pontifex HTTP', () ->
 	send = () ->
 		[ exchange, key, msg ]
 
+	## TESTS BEGIN HERE ##
 	pontifex_http = require 'pontifex.http'
 
 	it 'should load pontifex.http', () ->
@@ -46,10 +47,43 @@ describe 'Pontifex HTTP', () ->
 	it 'pontifex.http should accept the right parameters', () ->
 		pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
 
-	it 'should use POST to create a queue', (done) ->
+	it 'should accept POST to create a queue', (done) ->
 		reqparms =
 			uri: postURL,
 			method: "POST",
+			timeout: 1000,
+			headers: { authtoken }
+
+		request reqparms, (error, response, body) ->
+			chai.expect(response.statusCode).to.equal(401);
+			done()
+
+	it 'should accept PUT to send data', (done) ->
+		reqparms =
+			uri: putURL,
+			method: "PUT",
+			timeout: 1000,
+			headers: { authtoken }
+
+		request reqparms, (error, response, body) ->
+			chai.expect(response.statusCode).to.equal(401);
+			done()
+
+	it 'should accept GET to retrieve data', (done) ->
+		reqparms =
+			uri: getURL,
+			method: "GET",
+			timeout: 1000,
+			headers: { authtoken }
+
+		request reqparms, (error, response, body) ->
+			chai.expect(response.statusCode).to.equal(401);
+			done()
+
+	it 'should accept DELETE to delete queue', (done) ->
+		reqparms =
+			uri: delURL,
+			method: "DELETE",
 			timeout: 1000,
 			headers: { authtoken }
 

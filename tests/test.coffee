@@ -19,7 +19,7 @@ describe 'Pontifex HTTP', () ->
 	putURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
 	getURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-	valid_token = 'bearer 01DuT0mz_pQAnf_T'
+	valid_token = ''
 	invalid_token = 'bearer x'
 	call_count = 4
 
@@ -104,38 +104,36 @@ describe 'Pontifex HTTP', () ->
 				done()
 	do_tests()
 
-###
-##
-## Prepare a user and token with full permissions in order to test.
-## Make sure to revoke when done.
-##
-auth_requests =
-	grant_create:
-		url: 'http://auth.wot.io/grant_acl/wottest/wottest/create/test-exchange%2Ftest-key%2Ftest-queue'
-		json: true
-	grant_read:
-		url: 'http://auth.wot.io/grant_acl/wottest/wottest/read/test-exchange%2Ftest-key%2Ftest-queue'
-		json: true
-	grant_write:
-		url: 'http://auth.wot.io/grant_acl/wottest/wottest/write/test-exchange%2Ftest-key'
-		json: true
-	grant_delete:
-		url: 'http://auth.wot.io/grant_acl/wottest/wottest/delete/test-exchange%2Ftest-key%2Ftest-queue'
-		json: true
-for req of auth_requests
-	request auth_requests[req], (error, response, body) ->
-	do_tests()
+	##
+	## Prepare a user and token with full permissions in order to test.
+	## Make sure to revoke when done.
+	##
+	before () ->
+		auth_requests =
+			grant_create:
+				url: 'http://auth.wot.io/grant_acl/wottest/wottest/create/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+			grant_read:
+				url: 'http://auth.wot.io/grant_acl/wottest/wottest/read/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+			grant_write:
+				url: 'http://auth.wot.io/grant_acl/wottest/wottest/write/test-exchange%2Ftest-key'
+				json: true
+			grant_delete:
+				url: 'http://auth.wot.io/grant_acl/wottest/wottest/delete/test-exchange%2Ftest-key%2Ftest-queue'
+				json: true
+		for req of auth_requests
+			request auth_requests[req], (error, response, body) ->
+				return
 
-create_token_req =
-	url: 'http://auth.wot.io/create_token/wottest/wottest/wottest/20140723/21000723'
-	json: true
-request create_token_req, (error, response, body) ->
-	valid_token = "bearer #{body.create_token}"
-	do_tests()
+		create_token_req =
+			url: 'http://auth.wot.io/create_token/wottest/wottest/wottest/20140723/21000723'
+			json: true
+		request create_token_req, (error, response, body) ->
+			valid_token = "bearer #{body.create_token}"
 
 
-##
-## Delete auth token and ACLs that were used for testing
-##
-unauth_for_testing = () ->
-###
+	##
+	## Revoke ACLs and tokens when done.
+	##
+	after () ->

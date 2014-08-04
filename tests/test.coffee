@@ -15,7 +15,14 @@ describe 'Pontifex HTTP', () ->
 	console.log = () ->
 		return
 
-	authtoken = 'bearer 01DuT0mz_pQAnf_T'
+	# Define some parameters
+	postURL = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
+	putURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
+	getURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
+	delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
+
+	valid_token = 'bearer 01DuT0mz_pQAnf_T'
+	invalid_token = 'bearer x'
 	call_count = 4
 	do_tests = () ->
 		call_count++
@@ -23,23 +30,12 @@ describe 'Pontifex HTTP', () ->
 		# We build the components of a fake pontifex module which store data
 		# locally instead of sending it on the bus
 		self = this
-		connopts =
-			proto: 'http'
-			user: 'uesr'
-			password: 'pass'
-			host: 'Chicken Little'
-			domain: 'Gary Coleman'
 		Amqpurl = 'amqp://0.0.0.0:1234/wottest/test-exchange/key/test-queue/test-exchange/test-queue'
 		Url = 'http://127.0.0.1:8081/wot'
 		args = [ Url, Amqpurl ]
 
-		postURL = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-		putURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
-		getURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-		delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-
 		self.log = (key,msg) ->
-			[ key, msg ]
+			return
 		self.route = (exchange,key,queue,cont) ->
 			cont()
 			return
@@ -49,7 +45,7 @@ describe 'Pontifex HTTP', () ->
 		self.send = (exchange, key, msg) ->
 			return
 		self.delete = (queue) ->
-
+			return
 
 		pontifex_http = require 'pontifex.http'
 
@@ -65,45 +61,45 @@ describe 'Pontifex HTTP', () ->
 
 		# Fail auth on bad token
 		it "should fail auth on POST", (done) ->
-			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: invalid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail auth on PUT", (done) ->
-			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: "bearer invalid" }, data: '[ "run", "ls", "-al" ]'}
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: invalid_token }, data: '[ "run", "ls", "-al" ]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail auth on GET", (done) ->
-			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: invalid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail auth on DELETE", (done) ->
-			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: invalid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
 		# Succeed and return valid data
 		it "should accept POST", (done) ->
-			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: authtoken }}
+			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(201);
 				done()
 		it "should accept PUT", (done) ->
-			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: authtoken }, data: '[ "run", "ls", "-al" ]'}
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, data: '[ "run", "ls", "-al" ]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				done()
 		it "should accept GET", (done) ->
-			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: authtoken }}
+			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				chai.expect(body).to.equal('[ "test", "array" ]')
 				done()
 		it "should accept DELETE", (done) ->
-			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: authtoken }}
+			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				done()
@@ -135,7 +131,7 @@ create_token_req =
 	url: 'http://auth.wot.io/create_token/wottest/wottest/wottest/20140723/21000723'
 	json: true
 request create_token_req, (error, response, body) ->
-	authtoken = "bearer #{body.create_token}"
+	valid_token = "bearer #{body.create_token}"
 	do_tests()
 
 

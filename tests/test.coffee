@@ -20,7 +20,8 @@ describe 'Pontifex HTTP', () ->
 	get_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	del_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	unauthorized_URL = 'http://127.0.0.1:8081/wottest/Xtest-exchangeX/Xtest-keyX/Xtest-queueX'
-	invalid_path_format = 'http://127.0.0.1:8081/wottest/leeroyjenkins'
+	invalid_path_format_URL = 'http://127.0.0.1:8081/wottest/leeroyjenkins'
+	unauthorized_user_URL = 'http://127.0.0.1:8081/XwottestX/test-exchange/test-key/test-queue'
 
 	valid_token = ''
 	invalid_token = 'bearer x'
@@ -106,48 +107,71 @@ describe 'Pontifex HTTP', () ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
+		# Fail auth on bad user permissions
+		#
+		it "should fail auth on POST user", (done) ->
+			reqparams = {uri: unauthorized_user_URL, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on PUT user", (done) ->
+			reqparams = {uri: unauthorized_user_URL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on GET user", (done) ->
+			reqparams = {uri: unauthorized_user_URL, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on DELETE user", (done) ->
+			reqparams = {uri: unauthorized_user_URL, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+
 		# Fail gracefully on bad path format
 		#
 		it "should fail gracefully on POST path format", (done) ->
-			reqparams = {uri: invalid_path_format, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
+			reqparams = {uri: invalid_path_format_URL, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail gracefully on PUT path format", (done) ->
-			reqparams = {uri: invalid_path_format, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
+			reqparams = {uri: invalid_path_format_URL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail gracefully on GET path format", (done) ->
-			reqparams = {uri: invalid_path_format, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
+			reqparams = {uri: invalid_path_format_URL, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 		it "should fail gracefully on DELETE path format", (done) ->
-			reqparams = {uri: invalid_path_format, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
+			reqparams = {uri: invalid_path_format_URL, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
 		# Succeed and return valid data
 		#
-		it "should respont to valid POST with proper headers and data", (done) ->
+		it "should respond to valid POST with proper headers and data", (done) ->
 			reqparams = {uri: post_URL, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(201);
 				done()
-		it "should respont to valid PUT with proper headers and data", (done) ->
+		it "should respond to valid PUT with proper headers and data", (done) ->
 			reqparams = {uri: put_URL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				done()
-		it "should respont to valid GET with proper headers and data", (done) ->
+		it "should respond to valid GET with proper headers and data", (done) ->
 			reqparams = {uri: get_URL, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				chai.expect(body).to.equal('[ "test", "array" ]')
 				done()
-		it "should respont to valid DELETE with proper headers and data", (done) ->
+		it "should respond to valid DELETE with proper headers and data", (done) ->
 			reqparams = {uri: del_URL, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);

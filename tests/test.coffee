@@ -58,64 +58,50 @@ describe 'Pontifex HTTP', () ->
 			pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
 
 		# Fail auth on bad token
-		reqparams = [
-			{uri: postURL, method: "POST", timeout: 1000, headers: { authorization: "bearer invalid" }},
-			{uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: "bearer invalid" }},
-			{uri: getURL, method: "GET", timeout: 1000, headers: { authorization: "bearer invalid" }},
-			{uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: "bearer invalid" }}
-		]
-		for i in [0...reqparams.length]
-			console.log reqparams[i]
-			it "should fail auth on #{reqparams[i].method}", (done) ->
-				request reqparams[i], (error, response, body) ->
-					chai.expect(response.statusCode).to.equal(401);
-					done()
+		it "should fail auth on POST", (done) ->
+			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on PUT", (done) ->
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: "bearer invalid" }, data: '[ "run", "ls", "-al" ]'}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on GET", (done) ->
+			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+		it "should fail auth on DELETE", (done) ->
+			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: "bearer invalid" }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
 
 		# Succeed and return valid data
-		it 'should accept POST to create a queue', (done) ->
-			reqparams =
-				uri: postURL,
-				method: "POST",
-				headers: { authorization: authtoken }
-
+		it "should accept POST", (done) ->
+			reqparams = {uri: postURL, method: "POST", timeout: 1000, headers: { authorization: authtoken }}
 			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+				chai.expect(response.statusCode).to.equal(201);
 				done()
-
-		it 'should accept PUT to send data', (done) ->
-			reqparams =
-				uri: putURL,
-				method: "PUT",
-				headers: { authorization: authtoken }
-				data: '[ "run", "ls", "-al" ]'
-
-			console.log reqparams
-			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
-				done()
-
-		it 'should accept GET to retrieve data', (done) ->
-			reqparams =
-				uri: getURL,
-				method: "GET",
-				headers: { authorization: authtoken }
-
-			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(200);
-				chai.expect(body).to.equal('[ "test", "array" ]')
-				done()
-
-		it 'should accept DELETE to delete queue', (done) ->
-			reqparams =
-				uri: delURL,
-				method: "DELETE",
-				headers: { authorization: authtoken }
-
+		it "should accept PUT", (done) ->
+			reqparams = {uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: authtoken }, data: '[ "run", "ls", "-al" ]'}
 			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(200);
 				done()
-
+		it "should accept GET", (done) ->
+			reqparams = {uri: getURL, method: "GET", timeout: 1000, headers: { authorization: authtoken }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(200);
+				done()
+		it "should accept DELETE", (done) ->
+			reqparams = {uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: authtoken }}
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(200);
+				done()
 	do_tests()
+
 ###
 ##
 ## Prepare a user and token with full permissions in order to test.

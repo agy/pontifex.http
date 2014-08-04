@@ -10,6 +10,94 @@ chai = require '/usr/local/lib/node_modules/chai'
 chai.expect()
 
 describe 'Pontifex HTTP', () ->
+
+	authtoken = ''
+	complete_count = 0
+	do_tests = () ->
+		complete_count++
+		if complete_count != 2 then return
+		# We build the components of a fake pontifex module which store data
+		# locally instead of sending it on the bus
+		self = this
+		connopts =
+			proto: 'http'
+			user: 'uesr'
+			password: 'pass'
+			host: 'Chicken Little'
+			domain: 'Gary Coleman'
+		Amqpurl = 'amqp://0.0.0.0:1234/wottest/test-exchange/key/test-queue/test-exchange/test-queue'
+		Url = 'http://127.0.0.1:8081/wot'
+		args = [ Url, Amqpurl ]
+
+		postURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
+		putURL = 'http://127.0.01:8081/wottest/test-exchange/foobar'
+		getURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
+		delURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
+
+		log = (key,msg) ->
+			[ key, msg ]
+		route = (exchange,key,queue,cont) ->
+			[ exchange, key, queue, cont ]
+		read = (queue,fun) ->
+			[ queue, fun ]
+		send = () ->
+			[ exchange, key, msg ]
+
+		pontifex_http = require 'pontifex.http'
+
+		##
+		## TESTS BEGIN HERE
+		##
+		it 'should load pontifex.http', () ->
+			chai.expect(pontifex_http).to.be.a('function')
+
+		it 'pontifex.http should accept the right parameters', () ->
+			pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
+
+		it 'should accept POST to create a queue', (done) ->
+			reqparms =
+				uri: postURL,
+				method: "POST",
+				timeout: 1000,
+				headers: { authorization: authtoken }
+
+			request reqparms, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+
+		it 'should accept PUT to send data', (done) ->
+			reqparms =
+				uri: putURL,
+				method: "PUT",
+				timeout: 1000,
+				headers: { authorization: authtoken }
+
+			request reqparms, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+
+		it 'should accept GET to retrieve data', (done) ->
+			reqparms =
+				uri: getURL,
+				method: "GET",
+				timeout: 1000,
+				headers: { authorization: authtoken }
+
+			request reqparms, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+
+		it 'should accept DELETE to delete queue', (done) ->
+			reqparms =
+				uri: delURL,
+				method: "DELETE",
+				timeout: 1000,
+				headers: { authorization: authtoken }
+
+			request reqparms, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(401);
+				done()
+
 	##
 	## Prepare a user and token with full permissions in order to test.
 	## Make sure to revoke when done.
@@ -28,103 +116,18 @@ describe 'Pontifex HTTP', () ->
 			url: 'http://auth.wot.io/grant_acl/wottest/wottest/delete/test-exchange%2Ftest-key%2Ftest-queue'
 			json: true
 	for req of auth_requests
-		try
-			request auth_requests[req], (error, response, body) ->
-				if !error and response.statusCode == 200
-					console.log body
-		catch error
-			console.log "[pontifex.http test] #{error}"
+		request auth_requests[req], (error, response, body) ->
+		do_tests()
 
 	create_token_req =
 		url: 'http://auth.wot.io/create_token/wottest/wottest/wottest/20140723/21000723'
 		json: true
-	try
-		request create_token_req, (error, response, body) ->
-			if !error and response.statusCode == 200
-				authorization =
-					"bearer #{body.create_token}"
-	catch error
-		console.log "[pontifex.http test] #{error}"
+	request create_token_req, (error, response, body) ->
+		authtoken = "bearer #{body.create_token}"
+		do_tests()
 
-
-	# We build the components of a fake pontifex module which store data
-	# locally instead of sending it on the bus
-	self = this
-	connopts =
-		proto: 'http'
-		user: 'uesr'
-		password: 'pass'
-		host: 'Chicken Little'
-		domain: 'Gary Coleman'
-	Amqpurl = 'amqp://0.0.0.0:1234/wottest/test-exchange/key/test-queue/test-exchange/test-queue'
-	Url = 'http://127.0.0.1:8081/wot'
-	args = [ Url, Amqpurl ]
-
-	postURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
-	putURL = 'http://127.0.01:8081/wottest/test-exchange/foobar'
-	getURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
-	delURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
-
-	log = (key,msg) ->
-		[ key, msg ]
-	route = (exchange,key,queue,cont) ->
-		[ exchange, key, queue, cont ]
-	read = (queue,fun) ->
-		[ queue, fun ]
-	send = () ->
-		[ exchange, key, msg ]
-
-	pontifex_http = require 'pontifex.http'
 
 	##
-	## TESTS BEGIN HERE
+	## Delete auth token and ACLs that were used for testing
 	##
-	it 'should load pontifex.http', () ->
-		chai.expect(pontifex_http).to.be.a('function')
-
-	it 'pontifex.http should accept the right parameters', () ->
-		pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
-
-	it 'should accept POST to create a queue', (done) ->
-		reqparms =
-			uri: postURL,
-			method: "POST",
-			timeout: 1000,
-			headers: { authtoken }
-
-		request reqparms, (error, response, body) ->
-			chai.expect(response.statusCode).to.equal(401);
-			done()
-
-	it 'should accept PUT to send data', (done) ->
-		reqparms =
-			uri: putURL,
-			method: "PUT",
-			timeout: 1000,
-			headers: { authtoken }
-
-		request reqparms, (error, response, body) ->
-			chai.expect(response.statusCode).to.equal(401);
-			done()
-
-	it 'should accept GET to retrieve data', (done) ->
-		reqparms =
-			uri: getURL,
-			method: "GET",
-			timeout: 1000,
-			headers: { authtoken }
-
-		request reqparms, (error, response, body) ->
-			chai.expect(response.statusCode).to.equal(401);
-			done()
-
-	it 'should accept DELETE to delete queue', (done) ->
-		reqparms =
-			uri: delURL,
-			method: "DELETE",
-			timeout: 1000,
-			headers: { authtoken }
-
-		request reqparms, (error, response, body) ->
-			chai.expect(response.statusCode).to.equal(401);
-			done()
+	unauth_for_testing = () ->

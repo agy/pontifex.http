@@ -10,8 +10,7 @@ chai = require '/usr/local/lib/node_modules/chai'
 chai.expect()
 
 describe 'Pontifex HTTP', () ->
-
-	authtoken = 'bearer 01DuT0mz_pQAnf_'
+	authtoken = 'bearer 01DuT0mz_pQAnf_T'
 	call_count = 4
 	do_tests = () ->
 		call_count++
@@ -34,70 +33,86 @@ describe 'Pontifex HTTP', () ->
 		getURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 		delURL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 
-		log = (key,msg) ->
+		self.log = (key,msg) ->
 			[ key, msg ]
-		route = (exchange,key,queue,cont) ->
+		self.route = (exchange,key,queue,cont) ->
 			[ exchange, key, queue, cont ]
-		read = (queue,fun) ->
+		self.read = (queue,fun) ->
 			fun ('[ "test", "array" ]')
 			return
-		send = () ->
+		self.send = (exchange, key, msg) ->
 			[ exchange, key, msg ]
+		self.delete = (queue) ->
+
 
 		pontifex_http = require 'pontifex.http'
 
 		##
 		## TESTS BEGIN HERE
 		##
+
+		# Loading & defining module
 		it 'should load pontifex.http', () ->
 			chai.expect(pontifex_http).to.be.a('function')
-
 		it 'pontifex.http should accept the right parameters', () ->
 			pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
 
+		# Fail auth on bad token
+		reqparams = [
+			{uri: postURL, method: "POST", timeout: 1000, headers: { authorization: "bearer invalid" }},
+			{uri: putURL, method: "PUT", timeout: 1000, headers: { authorization: "bearer invalid" }},
+			{uri: getURL, method: "GET", timeout: 1000, headers: { authorization: "bearer invalid" }},
+			{uri: delURL, method: "DELETE", timeout: 1000, headers: { authorization: "bearer invalid" }}
+		]
+		for i in [0...reqparams.length]
+			console.log reqparams[i]
+			it "should fail auth on #{reqparams[i].method}", (done) ->
+				request reqparams[i], (error, response, body) ->
+					chai.expect(response.statusCode).to.equal(401);
+					done()
+
+		# Succeed and return valid data
 		it 'should accept POST to create a queue', (done) ->
-			reqparms =
+			reqparams =
 				uri: postURL,
 				method: "POST",
-				timeout: 1000,
 				headers: { authorization: authtoken }
 
-			request reqparms, (error, response, body) ->
+			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
 		it 'should accept PUT to send data', (done) ->
-			reqparms =
+			reqparams =
 				uri: putURL,
 				method: "PUT",
-				timeout: 1000,
 				headers: { authorization: authtoken }
 				data: '[ "run", "ls", "-al" ]'
 
-			request reqparms, (error, response, body) ->
+			console.log reqparams
+			request reqparams, (error, response, body) ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
 		it 'should accept GET to retrieve data', (done) ->
-			reqparms =
+			reqparams =
 				uri: getURL,
 				method: "GET",
-				timeout: 1000,
 				headers: { authorization: authtoken }
 
-			request reqparms, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(200);
+				chai.expect(body).to.equal('[ "test", "array" ]')
 				done()
 
 		it 'should accept DELETE to delete queue', (done) ->
-			reqparms =
+			reqparams =
 				uri: delURL,
 				method: "DELETE",
-				timeout: 1000,
 				headers: { authorization: authtoken }
 
-			request reqparms, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+			request reqparams, (error, response, body) ->
+				chai.expect(response.statusCode).to.equal(200);
 				done()
 
 	do_tests()

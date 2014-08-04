@@ -31,7 +31,6 @@ Http = (Bridge,Url) =>
 		try
 			request auth_req, (error, response, body) ->
 				if !error and response.statusCode == 200
-					console.log body
 					if body.authenticate_token
 						callback()
 					else

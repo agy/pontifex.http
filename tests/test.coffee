@@ -10,6 +10,43 @@ chai = require '/usr/local/lib/node_modules/chai'
 chai.expect()
 
 describe 'Pontifex HTTP', () ->
+	##
+	## Prepare a user and token with full permissions in order to test.
+	## Make sure to revoke when done.
+	##
+	auth_requests =
+		grant_create:
+			url: 'http://auth.wot.io/grant_acl/wottest/wottest/create/test-exchange%2Ftest-key%2Ftest-queue'
+			json: true
+		grant_read:
+			url: 'http://auth.wot.io/grant_acl/wottest/wottest/read/test-exchange%2Ftest-key%2Ftest-queue'
+			json: true
+		grant_write:
+			url: 'http://auth.wot.io/grant_acl/wottest/wottest/write/test-exchange%2Ftest-key'
+			json: true
+		grant_delete:
+			url: 'http://auth.wot.io/grant_acl/wottest/wottest/delete/test-exchange%2Ftest-key%2Ftest-queue'
+			json: true
+	for req of auth_requests
+		try
+			request auth_requests[req], (error, response, body) ->
+				if !error and response.statusCode == 200
+					console.log body
+		catch error
+			console.log "[pontifex.http test] #{error}"
+
+	create_token_req =
+		url: 'http://auth.wot.io/create_token/wottest/wottest/wottest/20140723/21000723'
+		json: true
+	try
+		request create_token_req, (error, response, body) ->
+			if !error and response.statusCode == 200
+				authorization =
+					"bearer #{body.create_token}"
+	catch error
+		console.log "[pontifex.http test] #{error}"
+
+
 	# We build the components of a fake pontifex module which store data
 	# locally instead of sending it on the bus
 	self = this
@@ -19,15 +56,14 @@ describe 'Pontifex HTTP', () ->
 		password: 'pass'
 		host: 'Chicken Little'
 		domain: 'Gary Coleman'
-	Amqpurl = 'amqp://0.0.0.0:1234/wot/test-exchange/key/test-queue/test-exchange/test-queue'
+	Amqpurl = 'amqp://0.0.0.0:1234/wottest/test-exchange/key/test-queue/test-exchange/test-queue'
 	Url = 'http://127.0.0.1:8081/wot'
-	authtoken = 'authorization: bearer 01Qk925hduUux13Z'
 	args = [ Url, Amqpurl ]
 
-	postURL = 'http://127.0.01:8081/wot/test-exchange/%23/test-queue'
-	putURL = 'http://127.0.01:8081/wot/test-exchange/foobar'
-	getURL = 'http://127.0.01:8081/wot/test-exchange/%23/test-queue'
-	delURL = 'http://127.0.01:8081/wot/test-exchange/%23/test-queue'
+	postURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
+	putURL = 'http://127.0.01:8081/wottest/test-exchange/foobar'
+	getURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
+	delURL = 'http://127.0.01:8081/wottest/test-exchange/%23/test-queue'
 
 	log = (key,msg) ->
 		[ key, msg ]
@@ -38,9 +74,11 @@ describe 'Pontifex HTTP', () ->
 	send = () ->
 		[ exchange, key, msg ]
 
-	## TESTS BEGIN HERE ##
 	pontifex_http = require 'pontifex.http'
 
+	##
+	## TESTS BEGIN HERE
+	##
 	it 'should load pontifex.http', () ->
 		chai.expect(pontifex_http).to.be.a('function')
 

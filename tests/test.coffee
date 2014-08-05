@@ -11,6 +11,7 @@ chai.expect()
 
 describe 'Pontifex HTTP', () ->
 	# Override console.log for cleaner output
+	loggit = console.log
 	console.log = () ->
 		return
 
@@ -107,27 +108,35 @@ describe 'Pontifex HTTP', () ->
 				chai.expect(response.statusCode).to.equal(401);
 				done()
 
-		# Fail gracefully on bad path format
+		# Not respond on bad path format
 		#
-		it "should fail gracefully on POST path format", (done) ->
+		it "should not respond on bad POST path format", (done) ->
 			reqparams = {uri: invalid_path_format_URL, method: "POST", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+				chai.expect(error.code).to.equal('ETIMEDOUT')
+				chai.expect(response).to.be.an('undefined')
+				chai.expect(body).to.be.an('undefined')
 				done()
-		it "should fail gracefully on PUT path format", (done) ->
+		it "should not respond on bad PUT path format", (done) ->
 			reqparams = {uri: invalid_path_format_URL, method: "PUT", timeout: 1000, headers: { authorization: valid_token }, form: '["foo"]'}
 			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+				chai.expect(error.code).to.equal('ETIMEDOUT')
+				chai.expect(response).to.be.an('undefined')
+				chai.expect(body).to.be.an('undefined')
 				done()
-		it "should fail gracefully on GET path format", (done) ->
+		it "should not respond on bad GET path format", (done) ->
 			reqparams = {uri: invalid_path_format_URL, method: "GET", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+				chai.expect(error.code).to.equal('ETIMEDOUT')
+				chai.expect(response).to.be.an('undefined')
+				chai.expect(body).to.be.an('undefined')
 				done()
-		it "should fail gracefully on DELETE path format", (done) ->
+		it "should not respond on bad DELETE path format", (done) ->
 			reqparams = {uri: invalid_path_format_URL, method: "DELETE", timeout: 1000, headers: { authorization: valid_token }}
 			request reqparams, (error, response, body) ->
-				chai.expect(response.statusCode).to.equal(401);
+				chai.expect(error.code).to.equal('ETIMEDOUT')
+				chai.expect(response).to.be.an('undefined')
+				chai.expect(body).to.be.an('undefined')
 				done()
 
 		# Succeed and return valid data

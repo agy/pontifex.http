@@ -14,7 +14,7 @@ describe 'Pontifex HTTP', () ->
 	console.log = () ->
 		return
 
-	# Define some parameters
+	# Define test parameters
 	post_URL = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
 	put_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
 	get_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
@@ -34,6 +34,7 @@ describe 'Pontifex HTTP', () ->
 		Url = 'http://127.0.0.1:8081/wot'
 		args = [ Url, Amqpurl ]
 
+		# Callbacks used by pontifex.http
 		self.log = (key,msg) ->
 			return
 		self.route = (exchange,key,queue,cont) ->
@@ -46,7 +47,6 @@ describe 'Pontifex HTTP', () ->
 			return
 		self.delete = (queue) ->
 			return
-
 		pontifex_http = require 'pontifex.http'
 
 		##
@@ -56,6 +56,7 @@ describe 'Pontifex HTTP', () ->
 		##
 
 		# Loading & defining module
+		#
 		it 'should load pontifex.http', () ->
 			chai.expect(pontifex_http).to.be.a('function')
 		it 'pontifex.http should accept the right parameters', () ->

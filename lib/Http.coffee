@@ -19,7 +19,7 @@ Http = (Bridge,Url) =>
 	#                  http://tools.ietf.org/html/rfc6750
 	wot_authenticate = (res, req, command, path, callback) ->
 		if typeof req.headers.authorization == 'undefined'
-			res.writeHead 401, { "Content-Type": "application/json", "Content-Length": 0 }
+			res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
 			res.end()
 			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]

@@ -25,6 +25,12 @@ Http = (Bridge,Url) =>
 			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 			return
 		token = req.headers.authorization.match(/bearer (.*)/i)[1]
+		if token == null
+			res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
+			res.end()
+			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+			return
 		auth_req =
 			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}".replace("'", "''")
 			json: true

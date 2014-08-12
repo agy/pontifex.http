@@ -14,7 +14,7 @@ Http = (Bridge,Url) =>
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
 
-	close_connection = (statusCode, res, req, contentLength, customLocation) ->
+	close_connection = (statusCode, res, req, contentLength) ->
 		contentLength = 0 if typeof contentLength == 'undefined'
 		if typeof customLocation == 'undefined'
 			header = { "Content-Type": "application/json", "Content-Length": contentLength }
@@ -109,10 +109,7 @@ Http = (Bridge,Url) =>
 					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
 					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 				else
-					res.writeHead 404, { "Content-Type": "application/json", "Content-Length": 0 }
-					res.end()
-					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
+					close_connection 404, res, req)
 
 	# PUT exchange/key   - write a message to a sink
 	self.put = (req,res) ->

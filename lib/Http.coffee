@@ -13,7 +13,7 @@ Http = (Bridge,Url) =>
 
 	# http :// wot.io : 80 / wot
 	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):(\d+)/([^\/]*)///)[1...]
-
+	port = String (parseInt(port) + 1)
 	close_connection = (statusCode, res, req, contentLength) ->
 		contentLength = 0 if typeof contentLength == 'undefined'
 		if typeof customLocation == 'undefined'

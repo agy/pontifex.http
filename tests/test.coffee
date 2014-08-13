@@ -15,12 +15,12 @@ describe 'Pontifex HTTP', () ->
 		return
 
 	# Define test parameters
-	post_URL = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-	put_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key'
-	get_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-	del_URL  = 'http://127.0.0.1:8081/wottest/test-exchange/test-key/test-queue'
-	unauthorized_URL = 'http://127.0.0.1:8081/wottest/Xtest-exchangeX/Xtest-keyX/Xtest-queueX'
-	invalid_path_format_URL = 'http://127.0.0.1:8081/wottest/leeroyjenkins'
+	post_URL = 'http://127.0.0.1:8080/wottest/test-exchange/test-key/test-queue'
+	put_URL  = 'http://127.0.0.1:8080/wottest/test-exchange/test-key'
+	get_URL  = 'http://127.0.0.1:8080/wottest/test-exchange/test-key/test-queue'
+	del_URL  = 'http://127.0.0.1:8080/wottest/test-exchange/test-key/test-queue'
+	unauthorized_URL = 'http://127.0.0.1:8080/wottest/Xtest-exchangeX/Xtest-keyX/Xtest-queueX'
+	invalid_path_format_URL = 'http://127.0.0.1:8080/wottest/leeroyjenkins'
 	valid_token = '' # Gets filled in with a generated token
 	invalid_token = 'bearer x'
 
@@ -28,8 +28,8 @@ describe 'Pontifex HTTP', () ->
 	# locally instead of sending it on the bus
 	self = this
 	Amqpurl = 'amqp://0.0.0.0:1234/wottest/test-exchange/key/test-queue/test-exchange/test-queue'
-	Url = 'http://127.0.0.1:8081/wot'
-	args = [ Url, Amqpurl ]
+	Url = '127.0.0.1/wot'
+	port = '8080'
 
 	# Callbacks used by pontifex.http
 	self.log = (key,msg) ->
@@ -57,7 +57,7 @@ describe 'Pontifex HTTP', () ->
 	it 'should load pontifex.http', () ->
 		chai.expect(pontifex_http).to.be.a('function')
 	it 'pontifex.http should accept the right parameters', () ->
-		pontifex_http?.apply(pontifex_http, [self,Url].concat(args))
+		pontifex_http?.apply(pontifex_http, [self,Url,port])
 
 	# Fail auth on bad token
 	#

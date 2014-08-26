@@ -7,71 +7,109 @@
 http = require 'http'
 uuid = require 'uuid'
 request = require 'request'
+EventEmitter = (require 'events').EventEmitter
 
-Http = (Bridge,Url,port) =>
+Http = (Bridge,Url) =>
+	auth = process.env['auth']
 	self = this
 
 	# http :// wot.io : 80 / wot
-	[ host, domain ] = Url.match(///([^:]+)/([^\/]*)///)[1...]
-
-	close_connection = (statusCode, res, req, contentLength) ->
-		contentLength = 0 if typeof contentLength == 'undefined'
-		if typeof customLocation == 'undefined'
-			header = { "Content-Type": "application/json", "Content-Length": contentLength }
-		else
-			header = { "Location": customLocation, "Content-Type": "application/json", "Content-Length": contentLength }
-		res.writeHead statusCode, { "Content-Type": "application/json", "Content-Length": contentLength }
-		res.end()
-		self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-		self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-
-	# OAuth2-like Authentication *Temporary, until full OAuth2 support is added*
-	# As specified in: http://tools.ietf.org/html/rfc6749
-	#                  http://tools.ietf.org/html/rfc6750
-	wot_authenticate = (res, req, command, path, callback) ->
-		if typeof req.headers.authorization == 'undefined'
-			close_connection 404, res, req
-			return
-		token = req.headers.authorization.match(/bearer (.*)/i)[1]
-		if token == null
-			close_connection 404, res, req
-			return
-		auth_req =
-			url: "http://auth.wot.io/authenticate_token/#{token}/#{command}/#{path}".replace("'", "''")
-			json: true
-		try
-			request auth_req, (error, response, body) ->
-				if !error and response.statusCode == 200
-					if body.authenticate_token
-						callback()
-					else
-						console.log 'Failed authentication'
-						close_connection 401, res, req
-		catch error
-			console.log "[pontifex.http] #{error}"
-
-	# Extract the path for matching, and prevent crash in case of invalid path
-	extract_path = (url, numOfMatches) ->
-		try
-			if numOfMatches == 2
-				return url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)///)[1...]
-			if numOfMatches == 3
-				return url.replace("%23","#").replace("%2a","*").match(////[^\/]*/([^\/]+)/([^\/]+)/([^\/]+)///)[1...]
-		catch error
-			console.log "[pontifex.http] #{error}"
-			return false
+	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):([^/]+)/(.*)///)[1...]
 
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
-		try
-		# dynamically dispatch to the correct REST handler
+		try 
+			# parse the path
+			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*)///)[1...].join("/")
+			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)///)[1...].join("/")
+
+			emitter = new EventEmitter()
+			# generate a session id
 			req.session = uuid.v4()
-			self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-			self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
-			self[req.method.toLowerCase()]?.apply(self,[ req,res ])
+			token = req.headers.authorization.match(/bearer (.*)/i)[1]
+
+			# unauthorized handler
+			emitter.on 'unauthorized', () ->
+				emitter.emit 'response', 401, ""	
+
+			# dynamically dispatch to the correct REST handler
+			emitter.on 'authorized', () ->
+				# Log the connection
+				self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
+				self[req.method.toLowerCase()]?.apply(self,[ req, res, source, sink, emitter ])
+
+			# response handler
+			emitter.on 'response', (code,data,headers) ->
+				headers ?= {}
+				headers["Content-Type"] = "application/json"
+				if data
+					headers["Content-Length"] = data.length
+				res.writeHead code, headers
+				if data
+					res.write data
+				res.end()
+				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+	
+			# authenticate the endpoint
+			switch req.method.toLowerCase()
+				when "get" then self.authorize token,'read',source,emitter
+				when "post" then self.authorize token,'create',source,emitter
+				when "put" then self.authorize token,'write',sink,emitter
+				when "delete" then self.authorize token,'delete',source,emitter
+
 		catch error
 			console.log "[pontifex.http] Error #{error}"
+			res.end()
+	
+	# Authorize via the auth server
+	# OAuth2-like Authentication *Temporary, until full OAuth2 support is added*
+	# As specified in: http://tools.ietf.org/html/rfc6749
+	#                  http://tools.ietf.org/html/rfc6750
+	self.authorize = (token,operation,path,emitter) ->
+		if not token
+			emitter.emit 'unauthorized'
+		request "http://#{auth}/authenticate_token/#{token}/#{operation}/#{escape(path).replace(///////g,"%2f")}", (error,resp,body) ->
+			if error
+				console.log error
+				emitter.emit 'unauthorized'
+			if JSON.parse(body).authenticate_token
+				emitter.emit 'authorized'
+			else
+				emitter.emit 'unauthorized'
 
+	# POST /exchange/key/queue   - creates a bus address for a source
+	self.post = (req,res,source,sink,emitter) ->
+		[ exchange, key, queue ] = source.split("/")
+		Bridge.route exchange, key, queue, () ->
+			emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{domain}/#{source}" }
+
+	# GET /exchange/key/queue   - reads a message off of the queue
+	self.get = (req,res,source,sink,emitter) ->
+		[ exchange, key, queue ] = source.split("/")
+		Bridge.read queue, (data) ->
+			emitter.emit 'response', 200, data
+
+	# PUT exchange/key   - write a message to a sink
+	self.put = (req,res,source,sink,emitter) ->
+		req.on 'data', (data) ->
+			message = JSON.parse(data)
+			if message[0] == 'ping'
+				data = JSON.stringify ['pong']
+			else
+				[ exchange, key ] = sink.split("/")
+				Bridge.send exchange, key, JSON.stringify(message)
+				data = JSON.stringify [ "ok", sink ]
+			emitter.emit 'response', 200, data
+
+	# DELETE /exchange/key/queue   - removes a queue & binding
+	self.delete = (req,res,source,sink,emitter) ->
+		[ exchange, key, queue ] = source.split("/")
+		Bridge.delete queue
+		emitter.emit 'response', 200, JSON.stringify [ "ok", req.url ]
+
+	# Primary Listening Platform
 	self.server.listen port
 	self.server.stats = []
 	self.server.flush_stats = () ->
@@ -80,70 +118,5 @@ Http = (Bridge,Url,port) =>
 		self.server.stats = []
 
 	setInterval self.server.flush_stats, 60000	# flush stats once a minute
-
-	# POST /exchange/key/queue   - creates a bus address for a source
-	self.post = (req,res) ->
-		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
-			close_connection 400, res, req
-			return
-		console.log [ exchange, key, queue ]
-		wot_authenticate(res, req, 'create', "#{exchange}%2F#{key}%2F#{queue}", () ->
-			Bridge.route exchange, key, queue, () ->
-				data = JSON.stringify [ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]
-				res.writeHead 201, { "Location": "/#{domain}/#{exchange}/#{key}/#{queue}", "Content-Type": "application/json", "Content-Length" : data.length }
-				res.end data
-				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
-
-	# GET /exchange/key/queue   - reads a message off of the queue
-	self.get = (req,res) ->
-		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
-			close_connection 400, res, req
-			return
-		console.log [ exchange, key, queue ]
-		wot_authenticate(res, req, 'read', "#{exchange}%2F#{key}%2F#{queue}", () ->
-			Bridge.read queue, (data) ->
-				if data
-					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
-					res.end data
-					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-				else
-					close_connection 404, res, req)
-
-	# PUT exchange/key   - write a message to a sink
-	self.put = (req,res) ->
-		sink = req.url.replace("%23","#").replace("%2a","*")
-		if !( [ exchange, key ] = extract_path(req.url, 2) )
-			close_connection 400, res, req
-			return
-		req.on 'data', (data) ->
-			try
-				wot_authenticate(res, req, 'write', "#{exchange}%2F#{key}", () ->
-					message = JSON.parse(data)
-					if message[0] == 'ping'
-						data = JSON.stringify ['pong']
-					else
-						Bridge.send exchange, key, JSON.stringify(message)
-						data = JSON.stringify [ "ok", sink ]
-					res.writeHead 200, { "Content-Type": "application/json", "Content-Length": data.length }
-					res.end data
-					self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-					self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
-			catch error
-				console.log "[pontifex.http] #{error}"
-
-	# DELETE /exchange/key/queue   - removes a queue & binding
-	self.delete = (req,res) ->
-		if !( [ exchange, key, queue ] = extract_path(req.url, 3) )
-			close_connection 400, res, req
-			return
-		wot_authenticate(res, req, 'delete', "#{exchange}%2F#{key}%2F#{queue}", () ->
-			Bridge.delete queue
-			data = JSON.stringify [ "ok", req.url ]
-			res.writeHead 200, { "Content-Type" : "application/json", "Content-Length" :  data.length }
-			res.end data
-			self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-			self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()])
 
 module.exports = Http

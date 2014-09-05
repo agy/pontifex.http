@@ -19,11 +19,6 @@ Http = (Bridge,Url) =>
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
 		try
-			# returns json pong without use of auth or bus
-			if req.headers.monitoring.match(/^ping$/)
-				res.write JSON.stringify ['pong']
-				return
-				
 			# parse the path
 			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*)///)[1...].join("/")
 			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)///)[1...].join("/")

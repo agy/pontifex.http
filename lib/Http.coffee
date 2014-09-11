@@ -35,8 +35,8 @@ Http = (Bridge,Url) =>
 			# dynamically dispatch to the correct REST handler
 			emitter.on 'authorized', () ->
 				# Log the connection
-				self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-				self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
+				self.server.stats.push [ 'created_connection', domain, req.url, req.session, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'read_connection', domain, req.url, req.session, req.socket.bytesRead, new Date().getTime()]
 				self[req.method.toLowerCase()]?.apply(self,[ req, res, source, sink, emitter ])
 
 			# response handler
@@ -49,8 +49,8 @@ Http = (Bridge,Url) =>
 				if data
 					res.write data
 				res.end()
-				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
+				self.server.stats.push [ 'wrote_connection', domain, req.url, req.session, req.socket.bytesWritten, new Date().getTime()]
+				self.server.stats.push [ 'closed_connection', domain, req.url, req.session, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
 	
 			# authenticate the endpoint
 			switch req.method.toLowerCase()

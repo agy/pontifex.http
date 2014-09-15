@@ -20,9 +20,11 @@ Http = (Url) =>
 
 		# Setup an event emitter and session id for this request
 		emitter = new EventEmitter()
-		req.session = uuid.v4()
-		req.peer = req.header?['X-Forwarded-For'] || "#{req.socket.remoteAddress}:#{req.socket.remotePort}"
-		self.created_connection( req.peer )	
+		session = uuid.v4()
+		peer = req.header?['X-Forwarded-For'] || "#{req.socket.remoteAddress}:#{req.socket.remotePort}"
+
+		# Log new connection
+		self.created_connection( peer )	
 
 		# Mixin the authorization behaviors
 		self.auth(emitter,req,res)
@@ -57,14 +59,7 @@ Http = (Url) =>
 			self.delete queue
 			emitter.emit 'response', 200, JSON.stringify [ "ok", req.url ]
 
-		# Handles dispatching an authorized HTTP request
-		emitter.on 'process', () ->
-			switch req.method.toLowerCase()
-				when "get" then emitter.emit 'get', source
-				when "post" then emitter.emit 'post', source
-				when "put" then emitter.emit 'put', sink
-				when "delete" then emitter.emit 'delete', source
-
+		# Handles when the URI is parsed
 		emitter.on 'parsed', (account, source, sink, token) ->
 			# Handle OAuth style request
 			self.token ||= req.headers.authorization.match(/bearer (.*)/i)[1]
@@ -73,6 +68,19 @@ Http = (Url) =>
 				when "post" then emitter.emit 'authorize', token,'create',source
 				when "put" then emitter.emit 'authorize', token,'write',sink
 				when "delete" then emitter.emit 'authorize', token,'delete',source
+
+		# Handles dispatching an authorized HTTP request
+		emitter.on 'authorized', () ->
+			self.authenticated_connection(peer)
+			switch req.method.toLowerCase()
+				when "get" then emitter.emit 'get', source
+				when "post" then emitter.emit 'post', source
+				when "put" then emitter.emit 'put', sink
+				when "delete" then emitter.emit 'delete', source
+
+		emitter.on 'unauthorized', () ->
+			self.rejected_connection(peer)
+			emitter.emit 'response', 401, ""	
 
 		# response handler
 		emitter.on 'response', (code,data,headers) ->
@@ -87,7 +95,9 @@ Http = (Url) =>
 			self.wrote_connection(req.socket.bytesWritten)
 			self.closed_connection(false)
 
+		# Kick off the auth process
 		emitter.emit 'parse', req.url
+
 	# Primary Listening Platform
 	self.server.listen port
 

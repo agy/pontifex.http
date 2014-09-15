@@ -1,4 +1,4 @@
-# Pontifex.Http.coffee
+# Http.coffee
 #
 # © 2013 Dave Goehrig <dave@dloh.org>
 # © 2014 wot.io LLC
@@ -9,114 +9,86 @@ uuid = require 'uuid'
 request = require 'request'
 EventEmitter = (require 'events').EventEmitter
 
-Http = (Bridge,Url) =>
-	auth = process.env['AUTH']
+Http = (Url) =>
 	self = this
 
 	# http :// wot.io : 80 / wot
-	[ proto, host, port, domain ] = Url.match(///([^:]+)://([^:]+):([^/]+)/(.*)///)[1...]
+	[ proto, host, port, account ] = Url.match(///([^:]+)://([^:]+):([^/]+)/(.*)///)[1...]
 
 	# HTTP server interface
 	self.server = http.createServer (req,res) ->
-		try
-			# parse the path
-			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*)///)[1...].join("/")
-			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)///)[1...].join("/")
 
-			emitter = new EventEmitter()
-			# generate a session id
-			req.session = uuid.v4()
-			token = req.headers.authorization.match(/bearer (.*)/i)[1]
+		# Setup an event emitter and session id for this request
+		emitter = new EventEmitter()
+		req.session = uuid.v4()
+		req.peer = req.header?['X-Forwarded-For'] || "#{req.socket.remoteAddress}:#{req.socket.remotePort}"
+		self.created_connection( req.peer )	
 
-			# unauthorized handler
-			emitter.on 'unauthorized', () ->
-				emitter.emit 'response', 401, ""	
+		# Mixin the authorization behaviors
+		self.auth(emitter,req,res)
+		
+		# GET /exchange/key/queue   - reads a message off of the queue
+		emitter.on 'get', (source) ->
+			[ exchange, key, queue ] = source.split("/")
+			self.read queue, (data) ->
+				emitter.emit 'response', 200, data
 
-			# dynamically dispatch to the correct REST handler
-			emitter.on 'authorized', () ->
-				# Log the connection
-				self.server.stats.push [ 'created_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-				self.server.stats.push [ 'read_connection', req.url, req.session, domain, req.socket.bytesRead, new Date().getTime()]
-				self[req.method.toLowerCase()]?.apply(self,[ req, res, source, sink, emitter ])
+		# POST /exchange/key/queue   - creates a bus address for a source
+		emitter.on 'post', (source) ->
+			[ exchange, key, queue ] = source.split("/")
+			self.route exchange, key, queue, () ->
+				emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{account}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{account}/#{source}" }
 
-			# response handler
-			emitter.on 'response', (code,data,headers) ->
-				headers ?= {}
-				headers["Content-Type"] = "application/json"
-				if data
-					headers["Content-Length"] = data.length
-				res.writeHead code, headers
-				if data
-					res.write data
-				res.end()
-				self.server.stats.push [ 'wrote_connection', req.url, req.session, domain, req.socket.bytesWritten, new Date().getTime()]
-				self.server.stats.push [ 'closed_connection', req.url, req.session, domain, "#{req.socket.remoteAddress}:#{req.socket.remotePort}", new Date().getTime()]
-	
-			# authenticate the endpoint
+		# PUT exchange/key   - write a message to a sink
+		emitter.on 'put', (sink) ->
+			req.on 'data', (data) ->
+				message = JSON.parse(data)
+				if message[0] == 'ping'
+					data = JSON.stringify ['pong']
+				else
+					[ exchange, key ] = sink.split("/")
+					self.send exchange, key, JSON.stringify(message)
+					data = JSON.stringify [ "ok", sink ]
+				emitter.emit 'response', 200, data
+
+		# DELETE /exchange/key/queue   - removes a queue & binding
+		emitter.on 'delete', (source) ->
+			[ exchange, key, queue ] = source.split("/")
+			self.delete queue
+			emitter.emit 'response', 200, JSON.stringify [ "ok", req.url ]
+
+		# Handles dispatching an authorized HTTP request
+		emitter.on 'process', () ->
 			switch req.method.toLowerCase()
-				when "get" then self.authorize token,'read',source,emitter
-				when "post" then self.authorize token,'create',source,emitter
-				when "put" then self.authorize token,'write',sink,emitter
-				when "delete" then self.authorize token,'delete',source,emitter
+				when "get" then emitter.emit 'get', source
+				when "post" then emitter.emit 'post', source
+				when "put" then emitter.emit 'put', sink
+				when "delete" then emitter.emit 'delete', source
 
-		catch error
-			console.log "[pontifex.http] Error #{error}"
+		emitter.on 'parsed', (account, source, sink, token) ->
+			# Handle OAuth style request
+			self.token ||= req.headers.authorization.match(/bearer (.*)/i)[1]
+			switch req.method.toLowerCase()
+				when "get" then emitter.emit 'authorize', token,'read',source
+				when "post" then emitter.emit 'authorize', token,'create',source
+				when "put" then emitter.emit 'authorize', token,'write',sink
+				when "delete" then emitter.emit 'authorize', token,'delete',source
+
+		# response handler
+		emitter.on 'response', (code,data,headers) ->
+			headers ?= {}
+			headers["Content-Type"] = "application/json"
+			if data
+				headers["Content-Length"] = data.length
+			res.writeHead code, headers
+			if data
+				res.write data
 			res.end()
-	
-	# Authorize via the auth server
-	# OAuth2-like Authentication *Temporary, until full OAuth2 support is added*
-	# As specified in: http://tools.ietf.org/html/rfc6749
-	#                  http://tools.ietf.org/html/rfc6750
-	self.authorize = (token,operation,path,emitter) ->
-		if not token
-			emitter.emit 'unauthorized'
-		request "http://#{auth}/authenticate_token/#{token}/#{operation}/#{escape(path).replace(///////g,"%2f")}", (error,resp,body) ->
-			if error
-				console.log error
-				emitter.emit 'unauthorized'
-			if JSON.parse(body).authenticate_token
-				emitter.emit 'authorized'
-			else
-				emitter.emit 'unauthorized'
+			self.wrote_connection(req.socket.bytesWritten)
+			self.closed_connection(false)
 
-	# POST /exchange/key/queue   - creates a bus address for a source
-	self.post = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
-		Bridge.route exchange, key, queue, () ->
-			emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{domain}/#{source}" }
-
-	# GET /exchange/key/queue   - reads a message off of the queue
-	self.get = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
-		Bridge.read queue, (data) ->
-			emitter.emit 'response', 200, data
-
-	# PUT exchange/key   - write a message to a sink
-	self.put = (req,res,source,sink,emitter) ->
-		req.on 'data', (data) ->
-			message = JSON.parse(data)
-			if message[0] == 'ping'
-				data = JSON.stringify ['pong']
-			else
-				[ exchange, key ] = sink.split("/")
-				Bridge.send exchange, key, JSON.stringify(message)
-				data = JSON.stringify [ "ok", sink ]
-			emitter.emit 'response', 200, data
-
-	# DELETE /exchange/key/queue   - removes a queue & binding
-	self.delete = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
-		Bridge.delete queue
-		emitter.emit 'response', 200, JSON.stringify [ "ok", req.url ]
-
+		emitter.emit 'parse', req.url
 	# Primary Listening Platform
 	self.server.listen port
-	self.server.stats = []
-	self.server.flush_stats = () ->
-		self.server.stats.map (x) ->
-			Bridge.log x[1], x
-		self.server.stats = []
-
-	setInterval self.server.flush_stats, 60000	# flush stats once a minute
 
 module.exports = Http

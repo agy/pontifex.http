@@ -10,7 +10,8 @@
   "main": "./lib/Http.coffee",
   "bin": {},
   "dependencies": {
-    "pontifex": ">=0.0.4"
+    "pontifex": ">=0.0.4",
+	 "uuid": ">=1.4.1"
   },
   "devDependencies": {},
   "optionalDependencies": {},

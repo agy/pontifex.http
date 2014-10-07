@@ -3,7 +3,7 @@
   "name": "pontifex.http",
   "license": "MIT",
   "description": "Bridges HTTP to AMQP",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "repository": {
     "url": "http://github.com/cthulhuology/pontifex.http"
   },
@@ -11,7 +11,7 @@
   "bin": {},
   "dependencies": {
     "pontifex": ">=0.0.4",
-	 "uuid": ">=1.4.1"
+    "uuid": ">=1.4.1"
   },
   "devDependencies": {},
   "optionalDependencies": {},

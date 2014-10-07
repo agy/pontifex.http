@@ -94,10 +94,13 @@ Http = (Bridge,Url) =>
 	# PUT exchange/key   - write a message to a sink
 	self.put = (req,res,source,sink,emitter) ->
 		req.on 'data', (data) ->
-			message = JSON.parse(data)
-			if message[0] == 'ping'
-				data = JSON.stringify ['pong']
-			else
+			message = ''
+			try
+				message = JSON.parse(data)
+				if message[0] == 'ping' then data = JSON.stringify ['pong']
+			catch
+				message = data
+			if data != JSON.stringify ['pong']
 				[ exchange, key ] = sink.split("/")
 				Bridge.send exchange, key, JSON.stringify(message)
 				data = JSON.stringify [ "ok", sink ]

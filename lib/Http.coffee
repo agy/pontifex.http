@@ -20,8 +20,7 @@ Http = (Bridge,Url) =>
 	self.server = http.createServer (req,res) ->
 		try
 			# parse the path
-			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*).*///)[1...].join("/")
-			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*).*///)[1...].join("/")
+			path = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*).*///)[1...].join("/")
 
 			emitter = new EventEmitter()
 			# generate a session id
@@ -37,7 +36,7 @@ Http = (Bridge,Url) =>
 				# Log the connection
 				self.server.stats.push [ 'created_connection', domain, req.url, req.session, "#{req.connection.remoteAddress}:#{req.connection.remotePort}", new Date().getTime()]
 				self.server.stats.push [ 'read_connection', domain, req.url, req.session, req.socket.bytesRead, new Date().getTime()]
-				self[req.method.toLowerCase()]?.apply(self,[ req, res, source, sink, emitter ])
+				self[req.method.toLowerCase()]?.apply(self,[ req, res, path, emitter ])
 
 			# response handler
 			emitter.on 'response', (code,data,headers) ->
@@ -54,10 +53,11 @@ Http = (Bridge,Url) =>
 	
 			# authenticate the endpoint
 			switch req.method.toLowerCase()
-				when "get" then self.authorize token,'read',source,emitter
-				when "post" then self.authorize token,'create',source,emitter
-				when "put" then self.authorize token,'write',sink,emitter
-				when "delete" then self.authorize token,'delete',source,emitter
+				when "get" then self.authorize token,'read',path,emitter
+				when "post" then self.authorize token,'create',path,emitter
+				when "put" then self.authorize token,'write',path,emitter
+				when "delete" then self.authorize token,'delete',path,emitter
+				else emitter.emit 'response', 400
 
 		catch error
 			console.log "[pontifex.http] Error #{error}"
@@ -79,20 +79,20 @@ Http = (Bridge,Url) =>
 			else
 				emitter.emit 'unauthorized'
 
-	# POST /exchange/key/queue   - creates a bus address for a source
-	self.post = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
+	# POST /exchange/key/queue   - creates a bus address for a path
+	self.post = (req,res,path,emitter) ->
+		[ exchange, key, queue ] = path.split("/")
 		Bridge.route exchange, key, queue, () ->
-			emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{domain}/#{source}" }
+			emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{domain}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{domain}/#{path}" }
 
 	# GET /exchange/key/queue   - reads a message off of the queue
-	self.get = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
+	self.get = (req,res,path,emitter) ->
+		[ exchange, key, queue ] = path.split("/")
 		Bridge.read queue, (data) ->
 			emitter.emit 'response', 200, data
 
-	# PUT exchange/key   - write a message to a sink
-	self.put = (req,res,source,sink,emitter) ->
+	# PUT exchange/key   - write a message to a path
+	self.put = (req,res,path,emitter) ->
 		req.on 'data', (data) ->
 			message = ''
 			try
@@ -101,9 +101,9 @@ Http = (Bridge,Url) =>
 			catch
 				message = data
 			if data != JSON.stringify ['pong']
-				[ exchange, key ] = sink.split("/")
+				[ exchange, key ] = path.split("/")
 				Bridge.send exchange, key, JSON.stringify(message)
-				data = JSON.stringify [ "ok", sink ]
+				data = JSON.stringify [ "ok", path ]
 			emitter.emit 'response', 200, data
 		# If the client doesn't send any data, then the server does nothing. We should then timeout the connection.
 		setTimeout ( () ->
@@ -111,8 +111,8 @@ Http = (Bridge,Url) =>
 		), 5000
 
 	# DELETE /exchange/key/queue   - removes a queue & binding
-	self.delete = (req,res,source,sink,emitter) ->
-		[ exchange, key, queue ] = source.split("/")
+	self.delete = (req,res,path,emitter) ->
+		[ exchange, key, queue ] = path.split("/")
 		Bridge.delete queue
 		emitter.emit 'response', 200, JSON.stringify [ "ok", req.url ]
 

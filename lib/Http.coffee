@@ -20,8 +20,8 @@ Http = (Bridge,Url) =>
 	self.server = http.createServer (req,res) ->
 		try
 			# parse the path
-			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*)///)[1...].join("/")
-			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)///)[1...].join("/")
+			source = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*)/*([^\/]*).*///)[1...].join("/")
+			sink = unescape(req.url).match(////[^\/]*/([^\/]+)/([^\/]*).*///)[1...].join("/")
 
 			emitter = new EventEmitter()
 			# generate a session id
@@ -105,6 +105,10 @@ Http = (Bridge,Url) =>
 				Bridge.send exchange, key, JSON.stringify(message)
 				data = JSON.stringify [ "ok", sink ]
 			emitter.emit 'response', 200, data
+		# If the client doesn't send any data, then the server does nothing. We should then timeout the connection.
+		setTimeout ( () ->
+			if !res.finished then emitter.emit 'response', 400
+		), 5000
 
 	# DELETE /exchange/key/queue   - removes a queue & binding
 	self.delete = (req,res,source,sink,emitter) ->

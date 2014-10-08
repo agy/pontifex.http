@@ -8,7 +8,6 @@ http = require 'http'
 uuid = require 'uuid'
 request = require 'request'
 EventEmitter = (require 'events').EventEmitter
-decoder = new (require('string_decoder')).StringDecoder('utf8')
 
 Http = (Bridge,Url) =>
 	auth = process.env['AUTH']
@@ -71,7 +70,7 @@ Http = (Bridge,Url) =>
 	self.authorize = (token,operation,path,emitter) ->
 		if not token
 			emitter.emit 'unauthorized'
-		request "http://#{auth}/authenticate_token/#{token}/#{operation}/#{escape(path).replace(///////g,"%2f")}", (error,resp,body) ->
+		request "http://#{auth}/authenticate_token/#{token}/#{operation}/#{escape(path).replace(///////g,"%2f")}", (error,resp,body) ->   #/)}" << Syntax Highlighting Fix
 			if error
 				console.log error
 				emitter.emit 'unauthorized'
@@ -100,7 +99,7 @@ Http = (Bridge,Url) =>
 				message = JSON.parse(data)
 				if message[0] == 'ping' then data = JSON.stringify ['pong']
 			catch
-				message = decoder.write(data)
+				message = data
 			if data != JSON.stringify ['pong']
 				[ exchange, key ] = sink.split("/")
 				Bridge.send exchange, key, JSON.stringify(message)

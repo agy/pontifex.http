@@ -8,6 +8,7 @@ http = require 'http'
 uuid = require 'uuid'
 request = require 'request'
 EventEmitter = (require 'events').EventEmitter
+decoder = new (require('string_decoder')).StringDecoder('utf8')
 
 Http = (Bridge,Url) =>
 	auth = process.env['AUTH']
@@ -99,7 +100,7 @@ Http = (Bridge,Url) =>
 				message = JSON.parse(data)
 				if message[0] == 'ping' then data = JSON.stringify ['pong']
 			catch
-				message = data
+				message = decoder.write(data)
 			if data != JSON.stringify ['pong']
 				[ exchange, key ] = path.split("/")
 				Bridge.send exchange, key, JSON.stringify(message)

@@ -48,7 +48,7 @@ Http = (Url) ->
 				self.route exchange, key, "#{queue}.#{session}" , () ->
 					self.subscribe "#{queue}.#{session}", subscription, ((message,headers) ->
 						if headers.session == session
-							console.log "Got message #{message } with headers #{headers}"
+							console.log "Got message #{message} with headers #{headers}"
 							emitter.emit 'response', 200, message
 							self.unsubscribe "#{queue}.#{session}", subscription
 						), () ->
@@ -80,7 +80,6 @@ Http = (Url) ->
 		# Handles when the URI is parsed
 		emitter.on 'parsed', (account, source, sink, token) ->
 			# Handle OAuth style request
-			self.token ||= req.headers.authorization?.match(/bearer (.*)/i)[1]
 			switch req.method.toLowerCase()
 				when "get" then emitter.emit 'authorize', token,'read',source
 				when "post" then emitter.emit 'authorize', token,'create',source, 'read', source, 'write', sink
@@ -98,7 +97,7 @@ Http = (Url) ->
 
 		emitter.on 'unauthorized', () ->
 			self.rejected_connection?(peer)
-			emitter.emit 'response', 401, ""	
+			emitter.emit 'response', 401, ""
 
 		# response handler
 		emitter.on 'response', (code,data,headers) ->
@@ -114,7 +113,7 @@ Http = (Url) ->
 			self.closed_connection?(false)
 
 		# Kick off the auth process
-		emitter.emit 'parse', req.url
+		emitter.emit 'parse', req.url, req.headers.authorization?.match(/bearer (.*)/i)[1]
 
 	# Primary Listening Platform
 	self.server.listen port

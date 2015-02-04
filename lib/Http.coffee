@@ -9,6 +9,7 @@ uuid = require 'uuid'
 request = require 'request'
 EventEmitter = (require 'events').EventEmitter
 decoder = new (require('string_decoder')).StringDecoder('utf8')
+url = require 'url'
 
 Http = (Url) ->
 	self = this
@@ -26,6 +27,16 @@ Http = (Url) ->
 
 		# Log new connection
 		self.created_connection?( peer )
+
+		# Health check
+		if url.parse(req.url).pathname == '/health'
+			response = {
+				pid: process.pid,
+				uptime: process.uptime(),
+				memory: process.memoryUsage()
+			}
+			emitter.emit 'response', 200, response
+			return
 
 		# Mixin the authorization behaviors
 		self.auth?(emitter,req,res)

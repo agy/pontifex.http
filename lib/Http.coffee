@@ -25,11 +25,11 @@ Http = (Url) ->
 		peer = req.header?['X-Forwarded-For'] || "#{req.socket.remoteAddress}:#{req.socket.remotePort}"
 
 		# Log new connection
-		self.created_connection?( peer )	
+		self.created_connection?( peer )
 
 		# Mixin the authorization behaviors
 		self.auth?(emitter,req,res)
-		
+
 		# GET /exchange/key/queue   - reads a message off of the queue
 		emitter.on 'get', (source) ->
 			[ exchange, key, queue ] = source.split("/")
@@ -43,7 +43,7 @@ Http = (Url) ->
 			if not sink
 				self.route exchange, key, queue, () ->
 					emitter.emit 'response', 201, JSON.stringify([ "ok", "/#{account}/#{exchange}/#{key}/#{queue}" ]), { "Location": "/#{account}/#{source}" }
-			else 
+			else
 				subscription = {}
 				self.route exchange, key, "#{queue}.#{session}" , () ->
 					self.subscribe "#{queue}.#{session}", subscription, ((message,headers) ->
@@ -58,7 +58,7 @@ Http = (Url) ->
 								[ dest, path ] = sink?.split("/") || []
 								self.send dest, path, JSON.stringify(message), { session: session }
 			self
-				
+
 		# PUT exchange/key   - write a message to a sink
 		emitter.on 'put', (sink) ->
 			req.on 'data', (data) ->
